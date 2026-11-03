@@ -1,17 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { Building2, Search, MapPin, Activity, ShieldAlert, Heart, Syringe, Sparkles } from 'lucide-react';
+import { EmptyState, ErrorState, LoadingState } from '../components/ApiState';
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    api.getDepartments().then(setDepartments);
+  const loadDepartments = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const raw = await api.getDepartments();
+      setDepartments(Array.isArray(raw) ? raw : []);
+    } catch (requestError) {
+      setError(api.getErrorMessage(requestError, 'Unable to load departments.'));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const filtered = departments.filter((d) =>
-    (d.departmentName + d.location + d.subtype + d.detail).toLowerCase().includes(search.toLowerCase())
+  useEffect(() => {
+    loadDepartments();
+  }, [loadDepartments]);
+
+  const filtered = (Array.isArray(departments) ? departments : []).filter((d) =>
+    Boolean(d) && [d.departmentName, d.location, d.subtype, d.detail].filter(Boolean).join(' ').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -33,6 +49,10 @@ export default function DepartmentsPage() {
         </div>
       </div>
 
+      {error && <ErrorState message={error} onRetry={loadDepartments} />}
+      {loading && <LoadingState label="Loading departments..." />}
+      {!loading && !error && filtered.length === 0 && <EmptyState>{departments.length ? 'No departments match your search.' : 'No departments are configured.'}</EmptyState>}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {filtered.map((dept) => (
           <div
@@ -42,7 +62,7 @@ export default function DepartmentsPage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-lime-100 text-lime-800">
-                  {dept.subtype}
+                  {dept.subtype || 'DEPARTMENT'}
                 </span>
                 <span className="text-xs font-mono text-gray-400">{dept.departmentId}</span>
               </div>
@@ -52,7 +72,7 @@ export default function DepartmentsPage() {
               </h4>
 
               <div className="mt-3 p-3 rounded-2xl bg-gray-50 text-xs text-gray-600 border border-gray-100">
-                <p className="font-semibold text-gray-800">{dept.detail}</p>
+                {dept.detail && <p className="font-semibold text-gray-800">{dept.detail}</p>}
                 <div className="flex items-center gap-1.5 text-gray-500 mt-1.5">
                   <MapPin className="w-3.5 h-3.5 text-lime-600 shrink-0" />
                   <span className="truncate">{dept.location}</span>
@@ -61,12 +81,10 @@ export default function DepartmentsPage() {
             </div>
 
             <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-              <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Fully Operational
+              <span className="text-gray-500 font-semibold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-gray-400"></span> Directory record
               </span>
-              <button className="text-lime-700 font-bold hover:underline">
-                Details
-              </button>
+              <span className="text-xs text-gray-500">{dept.departmentId}</span>
             </div>
           </div>
         ))}
@@ -74,4 +92,3 @@ export default function DepartmentsPage() {
     </div>
   );
 }
-

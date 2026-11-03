@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import ErrorBoundary from './ErrorBoundary';
 import { Sparkles, X, PlusCircle, Check } from 'lucide-react';
 
 export default function Layout() {
@@ -30,7 +31,9 @@ export default function Layout() {
         <Header onQuickAction={() => setShowSpaceModal(true)} />
 
         <main className="flex-1 px-8 py-6 max-w-7xl w-full mx-auto">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
 

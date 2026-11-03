@@ -1,68 +1,64 @@
-import React, { useState } from 'react';
-import { Users, User, Clock, Shield, Search, Plus } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Clock, Search } from 'lucide-react';
+import { api } from '../services/api';
+import { EmptyState, ErrorState, LoadingState } from '../components/ApiState';
 
 export default function StaffPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [staffList, setStaffList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [savingId, setSavingId] = useState('');
+  const isAdmin = api.getCurrentRole() === 'ADMIN';
 
-  const staffList = [
-    {
-      staffId: 'STF-000001',
-      name: 'Sister Clara Barton',
-      role: 'Head Nurse',
-      subtype: 'Nurse',
-      shift: 'Morning (07:00 - 15:00)',
-      department: 'Emergency Theater Unit',
-      email: 'clara.barton@meditek.com',
-      phone: '+1-555-0301'
-    },
-    {
-      staffId: 'STF-000002',
-      name: 'Nurse Amy Adams',
-      role: 'Staff Nurse',
-      subtype: 'Nurse',
-      shift: 'Night (23:00 - 07:00)',
-      department: 'Intensive Care Unit (ICU)',
-      email: 'amy.adams@meditek.com',
-      phone: '+1-555-0302'
-    },
-    {
-      staffId: 'STF-000003',
-      name: 'David Livingstone',
-      role: 'Senior Paramedic',
-      subtype: 'MedicalStaff',
-      shift: 'Rotational 24h',
-      department: 'Emergency Theater Unit',
-      email: 'david.l@meditek.com',
-      phone: '+1-555-0303'
-    },
-    {
-      staffId: 'STF-000004',
-      name: 'Nurse Jennifer Lawrence',
-      role: 'Surgical Nurse',
-      subtype: 'Nurse',
-      shift: 'Afternoon (15:00 - 23:00)',
-      department: 'Operating Theaters (OR)',
-      email: 'jennifer.l@meditek.com',
-      phone: '+1-555-0304'
-    },
-    {
-      staffId: 'STF-000005',
-      name: 'Simon Riley',
-      role: 'Biomedical Technician',
-      subtype: 'MedicalStaff',
-      shift: 'Morning (08:00 - 16:00)',
-      department: 'Diagnostic Radiology',
-      email: 'simon.riley@meditek.com',
-      phone: '+1-555-0305'
+  const loadStaff = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const raw = await api.getStaff();
+      setStaffList(Array.isArray(raw) ? raw : []);
+    } catch (requestError) {
+      setError(api.getErrorMessage(requestError, 'Unable to load staff directory.'));
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, []);
 
-  const filtered = staffList.filter((s) => {
-    const matchSearch = (s.name + s.department + s.role).toLowerCase().includes(search.toLowerCase());
-    const matchFilter = roleFilter === 'ALL' || s.subtype === roleFilter;
+  useEffect(() => {
+    loadStaff();
+  }, [loadStaff]);
+
+  const filtered = (Array.isArray(staffList) ? staffList : []).filter((s) => {
+    if (!s) return false;
+    const matchSearch = [s.name, s.email, s.departmentName || s.department, s.role, s.staffId]
+      .filter(Boolean).join(' ').toLowerCase().includes(search.toLowerCase());
+    const matchFilter = roleFilter === 'ALL' || (s.subtype || s.role) === roleFilter;
     return matchSearch && matchFilter;
   });
+  const roleFilters = api.isMockMode()
+    ? ['ALL', 'Nurse', 'MedicalStaff']
+    : ['ALL', ...new Set(staffList.map((staff) => staff.role).filter(Boolean))];
+
+  const toggleStaffStatus = async (staff) => {
+    const active = staff.isActive === false;
+    const verb = active ? 'activate' : 'deactivate';
+    if (!window.confirm(`${verb[0].toUpperCase()}${verb.slice(1)} ${staff.name}'s account?`)) return;
+    setSavingId(staff.staffId);
+    setError('');
+    setSuccess('');
+    try {
+      const updated = await api.setStaffActive(staff.staffId, active);
+      setStaffList((current) => current.map((item) => item.staffId === updated.staffId ? updated : item));
+      setSuccess(`${updated.name}'s account was ${active ? 'activated' : 'deactivated'}.`);
+      await loadStaff();
+    } catch (requestError) {
+      setError(api.getErrorMessage(requestError, 'Unable to update staff account status.'));
+    } finally {
+      setSavingId('');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -72,7 +68,7 @@ export default function StaffPage() {
           <p className="text-sm text-gray-500">Personnel allocations, shift schedules, and department deployment</p>
         </div>
         <div className="flex gap-2">
-          {['ALL', 'Nurse', 'MedicalStaff'].map((tab) => (
+          {roleFilters.map((tab) => (
             <button
               key={tab}
               onClick={() => setRoleFilter(tab)}
@@ -80,12 +76,16 @@ export default function StaffPage() {
                 roleFilter === tab ? 'bg-gray-900 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              {tab === 'MedicalStaff' ? 'Clinical Staff' : tab === 'Nurse' ? 'Nurses' : 'All Staff'}
+              {tab === 'ALL' ? 'All Staff' : tab === 'MedicalStaff' ? 'Clinical Staff' : tab === 'Nurse' ? 'Nurses' : tab}
             </button>
           ))}
         </div>
       </div>
 
+      {error && <ErrorState message={error} onRetry={loadStaff} />}
+      {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}
+      {loading && <LoadingState label="Loading staff directory..." />}
+      {!loading && !error && filtered.length === 0 && <EmptyState>No staff match this search or filter.</EmptyState>}
       <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -95,17 +95,17 @@ export default function StaffPage() {
                 <th className="pb-3">Business ID</th>
                 <th className="pb-3">Clinical Role</th>
                 <th className="pb-3">Assigned Department</th>
-                <th className="pb-3">Active Shift</th>
-                <th className="pb-3 pr-2 text-right">Status</th>
+                <th className="pb-3">Shift</th>
+                <th className="pb-3 pr-2 text-right">Status{!api.isMockMode() && isAdmin ? ' / Management' : ''}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 text-sm">
-              {filtered.map((s) => (
+              {!loading && filtered.map((s) => (
                 <tr key={s.staffId} className="hover:bg-gray-50/70 transition-colors">
                   <td className="py-3.5 pl-2">
                     <div className="flex items-center space-x-3">
                       <div className="w-9 h-9 rounded-full bg-lime-100 text-lime-800 font-bold flex items-center justify-center text-xs">
-                        {s.name[0]}
+                        {(s.name ? s.name.trim()[0] : 'S') || 'S'}
                       </div>
                       <div>
                         <p className="font-bold text-gray-900 text-sm">{s.name}</p>
@@ -115,17 +115,27 @@ export default function StaffPage() {
                   </td>
                   <td className="py-3.5 font-mono text-xs font-bold text-gray-700">{s.staffId}</td>
                   <td className="py-3.5 font-medium text-gray-800">{s.role}</td>
-                  <td className="py-3.5 text-xs font-semibold text-lime-800">{s.department}</td>
+                  <td className="py-3.5 text-xs font-semibold text-lime-800">{s.departmentName || s.department || 'Not assigned'}</td>
                   <td className="py-3.5 text-xs text-gray-600">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gray-100 text-gray-700">
                       <Clock className="w-3 h-3 text-gray-400" />
-                      {s.shift}
+                      {s.shift || (api.isMockMode() ? 'Not assigned' : 'Not tracked')}
                     </span>
                   </td>
                   <td className="py-3.5 pr-2 text-right">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      On-Duty
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${s.isActive === false ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                      {s.isActive === false ? 'Inactive' : api.isMockMode() ? 'On-Duty' : 'Active'}
                     </span>
+                    {!api.isMockMode() && isAdmin && (
+                      <button
+                        type="button"
+                        disabled={savingId === s.staffId}
+                        onClick={() => toggleStaffStatus(s)}
+                        className={`ml-2 rounded-lg border px-2 py-1 text-[11px] font-semibold disabled:opacity-50 ${s.isActive === false ? 'border-emerald-200 text-emerald-700' : 'border-rose-200 text-rose-700'}`}
+                      >
+                        {savingId === s.staffId ? 'Saving…' : s.isActive === false ? 'Activate' : 'Deactivate'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -136,4 +146,3 @@ export default function StaffPage() {
     </div>
   );
 }
-

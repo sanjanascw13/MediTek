@@ -1,108 +1,77 @@
-import React, { useState } from 'react';
-import { MessageSquare, Send, User, CheckCheck, Clock } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Clock, MessageSquare, Send } from 'lucide-react';
+import { api } from '../services/api';
+import { EmptyState, ErrorState, LoadingState, UnavailableNotice } from '../components/ApiState';
 
 export default function MessagesPage() {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'Dr. Robert Chen',
-      role: 'Chief Cardiologist',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-      time: '10:45 AM',
-      text: 'Patient John Deo exhibits stable vitals post-laparoscopy. Shift to step-down ward bed 205 at 14:00.',
-      unread: false,
-    },
-    {
-      id: 2,
-      sender: 'Sister Clara Barton',
-      role: 'Head Nurse - ETU',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
-      time: '11:12 AM',
-      text: 'Trauma Bay 2 restocked with sterile IV kits. Ready for afternoon surgeries.',
-      unread: true,
-    },
-    {
-      id: 3,
-      sender: 'Dr. Sarah Connor',
-      role: 'Neurology Department Head',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face',
-      time: '11:30 AM',
-      text: 'MRI report for Jens Brincker uploaded to lab reports repository.',
-      unread: true,
-    }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
+  const [recipient, setRecipient] = useState('ALL CLINICAL STAFF');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
-    setMessages([
-      ...messages,
-      {
-        id: Date.now(),
-        sender: 'Guy Hawkins (Manager)',
-        role: 'Administration',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face',
-        time: 'Just now',
-        text: inputText.trim(),
-        unread: false,
-      }
-    ]);
-    setInputText('');
+  const loadMessages = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setMessages(await api.getMessages());
+    } catch (requestError) {
+      setError(api.getErrorMessage(requestError, 'Unable to load demo messages.'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (api.isMockMode()) loadMessages();
+  }, [loadMessages]);
+
+  if (!api.isMockMode()) {
+    return <UnavailableNotice module="Clinical messaging" detail="The backend has no messaging or handover endpoint. Messages are not broadcast or persisted in live mode." />;
+  }
+
+  const handleSend = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const created = await api.sendMessage(inputText, recipient);
+      setMessages((current) => [...current, created]);
+      setInputText('');
+      setSuccess('Demo message added to this local session only; it was not broadcast to hospital staff.');
+    } catch (requestError) {
+      setError(api.getErrorMessage(requestError, 'Unable to send demo message.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Clinical Staff & Inter-Departmental Messaging</h2>
-        <p className="text-sm text-gray-500">Real-time coordinated handovers, clinical alerts, and nursing notices</p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-12 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col h-[650px] justify-between">
-          <div className="space-y-4 overflow-y-auto pr-2 flex-1">
-            {messages.map((msg) => (
-              <div key={msg.id} className="flex items-start space-x-3 p-4 rounded-2xl bg-gray-50/70 border border-gray-100 hover:bg-gray-50 transition-all">
-                <img
-                  src={msg.avatar}
-                  alt={msg.sender}
-                  className="w-11 h-11 rounded-2xl object-cover ring-2 ring-lime-400/40"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-gray-900 text-sm">{msg.sender}</span>
-                      <span className="text-xs text-lime-800 font-semibold ml-2">({msg.role})</span>
-                    </div>
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {msg.time}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700 mt-1 leading-relaxed">{msg.text}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <form onSubmit={handleSend} className="pt-4 border-t border-gray-100 flex items-center gap-3">
-            <input
-              type="text"
-              placeholder="Type urgent clinical dispatch or ward notification..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              className="flex-1 px-4 py-3 rounded-2xl bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-lime-400"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-2xl bg-[#a3e635] text-[#142008] font-bold text-sm hover:bg-[#8ddb16] transition-all flex items-center gap-2 shadow-md"
-            >
-              <Send className="w-4 h-4 stroke-[2.5]" />
-              <span>Broadcast</span>
-            </button>
-          </form>
+      <header className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm"><h1 className="text-2xl font-black text-gray-900">Clinical Staff & Inter-Departmental Messaging</h1><p className="text-sm text-gray-500">Sample notices and local demo handovers</p></header>
+      <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Development demo messages only. This screen does not transmit notifications or clinical handovers.</p>
+      {error && <ErrorState message={error} onRetry={loadMessages} />}
+      {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}
+      <section className="flex h-[650px] flex-col justify-between rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="space-y-4 overflow-y-auto pr-2">
+          {loading ? <LoadingState label="Loading demo messages..." /> : messages.length === 0 ? <EmptyState>No messages are available.</EmptyState> : messages.map((message) => (
+            <article key={message.id} className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-lime-100 text-sm font-bold text-lime-900">{message.sender?.[0] || 'M'}</div>
+              <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center justify-between gap-2"><p className="font-bold text-gray-900">{message.sender} <span className="ml-1 text-xs font-semibold text-lime-800">({message.role})</span></p><span className="flex items-center gap-1 text-xs text-gray-400"><Clock className="h-3 w-3" />{message.time}</span></div>{message.recipient && <p className="mt-1 text-[11px] font-semibold text-gray-500">To: {message.recipient}</p>}<p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{message.text}</p></div>
+            </article>
+          ))}
         </div>
-      </div>
+        <form onSubmit={handleSend} className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row">
+          <label className="sr-only" htmlFor="demo-message-recipient">Recipient</label>
+          <select id="demo-message-recipient" value={recipient} onChange={(event) => setRecipient(event.target.value)} className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm"><option>ALL CLINICAL STAFF</option><option>ADMIN</option><option>DOCTOR</option><option>STAFF</option></select>
+          <label className="sr-only" htmlFor="demo-message-text">Message text</label>
+          <input id="demo-message-text" required maxLength={1000} value={inputText} onChange={(event) => setInputText(event.target.value)} placeholder="Write a demo note..." className="min-w-0 flex-1 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-lime-400" />
+          <button disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#a3e635] px-5 py-3 text-sm font-bold text-gray-900 disabled:opacity-50"><Send className="h-4 w-4" />{saving ? 'Sending…' : 'Add demo note'}</button>
+        </form>
+      </section>
     </div>
   );
 }
-

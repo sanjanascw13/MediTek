@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Activity, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Activity,
+  Lock,
+  User,
+  ArrowRight,
+  ShieldCheck,
+  Stethoscope,
+  ClipboardList,
+  UserRound,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
 import { api } from '../services/api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('password');
+  const location = useLocation();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const finishLogin = () => {
+    navigate(location.state?.from?.pathname || '/', { replace: true });
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -16,21 +33,26 @@ export default function LoginPage() {
     setError('');
     try {
       await api.login({ username, password });
-      navigate('/');
     } catch (err) {
-      setError('Invalid clinical credentials.');
+      setError(api.getErrorMessage(err, 'Unable to sign in. Check your credentials and try again.'));
+      return;
     } finally {
       setLoading(false);
     }
+    finishLogin();
   };
 
-  const quickLogin = async (roleName, user, pass) => {
-    setUsername(user);
-    setPassword(pass);
+  const quickLogin = async (user) => {
     setLoading(true);
-    await api.login({ username: user, password: pass });
-    setLoading(false);
-    navigate('/');
+    setError('');
+    try {
+      await api.login({ username: user, password: '' });
+      finishLogin();
+    } catch (err) {
+      setError(api.getErrorMessage(err, 'Demo sign-in failed.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,7 +61,7 @@ export default function LoginPage() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-lime-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="max-w-md w-full bg-[#131b14] border border-[#223125] rounded-3xl p-8 shadow-2xl relative z-10 text-white">
+      <div className="max-w-xl w-full bg-[#131b14] border border-[#223125] rounded-3xl p-8 shadow-2xl relative z-10 text-white">
         {/* Brand */}
         <div className="flex items-center space-x-3 mb-6 justify-center">
           <div className="w-12 h-12 rounded-2xl bg-lime-500/20 flex items-center justify-center border border-lime-400/30 shadow-[0_0_20px_rgba(163,230,53,0.3)]">
@@ -74,7 +96,7 @@ export default function LoginPage() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. admin or dr.chen"
+                placeholder="Enter your username"
                 className="w-full pl-11 pr-4 py-3 rounded-2xl bg-[#0d140e] border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-lime-400"
               />
             </div>
@@ -85,13 +107,26 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="w-4 h-4 text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-[#0d140e] border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-lime-400"
+                placeholder="Enter your password"
+                className="w-full pl-11 pr-11 py-3 rounded-2xl bg-[#0d140e] border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-lime-400"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-lime-400 transition-colors focus:outline-none p-1"
+                title={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4 stroke-[2]" />
+                ) : (
+                  <Eye className="w-4 h-4 stroke-[2]" />
+                )}
+              </button>
             </div>
           </div>
 
@@ -105,28 +140,40 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Quick Demo Sign In Roles */}
-        <div className="mt-8 pt-6 border-t border-white/10">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center mb-3">
-            Quick One-Click Demo Access
-          </p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              onClick={() => quickLogin('Admin', 'admin', 'adminPass')}
-              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium text-center"
-            >
-              👑 Manager (Admin)
-            </button>
-            <button
-              onClick={() => quickLogin('Doctor', 'doctor', 'doctorPass')}
-              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 font-medium text-center"
-            >
-              🩺 Doctor (Physician)
-            </button>
+        {api.isMockMode() && (
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center mb-3">
+              Development Demo Access (Mock Mode)
+            </p>
+            <p className="mb-3 text-center text-xs text-gray-500">Choose a demo role to continue without credentials.</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: 'admin', label: 'Super Admin', detail: 'Hospital-wide management', icon: ShieldCheck },
+                { id: 'doctor', label: 'Doctor', detail: 'Clinical & appointments', icon: Stethoscope },
+                { id: 'staff', label: 'Staff', detail: 'Operational worklists', icon: ClipboardList },
+                { id: 'patient', label: 'Patient', detail: 'Personal health portal', icon: UserRound },
+              ].map(({ id, label, detail, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => quickLogin(id)}
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition hover:border-lime-400/50 hover:bg-white/10 disabled:opacity-50"
+                >
+                  <span className="rounded-xl bg-lime-400/10 p-2 text-lime-300"><Icon className="h-5 w-5" /></span>
+                  <span>
+                    <span className="block text-sm font-bold text-white">{label}</span>
+                    <span className="mt-0.5 block text-[10px] text-gray-400">{detail}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-3 text-center text-[10px] text-amber-300/80">
+              Demo-only navigation; these roles do not represent real security permissions.
+            </p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
-

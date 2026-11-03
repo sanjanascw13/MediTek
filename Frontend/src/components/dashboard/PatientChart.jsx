@@ -1,15 +1,10 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { EmptyState } from '../ApiState';
 
 export default function PatientChart({ data }) {
-  const chartData = data || [
-    { name: 'Dengue', value: 22, color: '#f97316' },
-    { name: 'Malaria', value: 20, color: '#84cc16' },
-    { name: 'Typhoid', value: 15, color: '#0ea5e9' },
-    { name: 'Cold', value: 18, color: '#a855f7' },
-  ];
-
-  const total = 75;
+  const chartData = Array.isArray(data) ? data : [];
+  const total = chartData.reduce((sum, item) => sum + Number(item.value || 0), 0);
 
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between h-full">
@@ -17,6 +12,7 @@ export default function PatientChart({ data }) {
         Patient Chart
       </h3>
 
+      {chartData.length === 0 ? <EmptyState>No patient chart data is available yet.</EmptyState> : (
       <div className="flex items-center justify-between">
         {/* Donut Chart with center label */}
         <div className="relative w-44 h-44">
@@ -64,13 +60,13 @@ export default function PatientChart({ data }) {
                 </span>
               </div>
               <span className="text-base font-bold text-gray-800 ml-4">
-                {item.value}%
+                {item.percentage != null ? `${item.percentage}% (${item.value})` : `${item.value}`}
               </span>
             </div>
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }
-

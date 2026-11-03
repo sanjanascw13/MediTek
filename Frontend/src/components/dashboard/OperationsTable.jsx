@@ -1,42 +1,9 @@
 import React from 'react';
-import { Edit3, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { EmptyState } from '../ApiState';
 
 export default function OperationsTable({ operations }) {
-  const list = operations || [
-    {
-      id: 'OP-001',
-      patientName: 'John Deo',
-      patientAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-      dateOfOperation: '12-08-2026',
-      duration: '3 hours',
-      followUpDate: '12-09-2026',
-    },
-    {
-      id: 'OP-002',
-      patientName: 'Jens Brincker',
-      patientAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
-      dateOfOperation: '14-08-2026',
-      duration: '2 hours',
-      followUpDate: '14-09-2026',
-    },
-    {
-      id: 'OP-003',
-      patientName: 'Elena Rostova',
-      patientAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face',
-      dateOfOperation: '18-08-2026',
-      duration: '4 hours',
-      followUpDate: '18-09-2026',
-    },
-    {
-      id: 'OP-004',
-      patientName: 'Marcus Vance',
-      patientAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face',
-      dateOfOperation: '20-08-2026',
-      duration: '1.5 hours',
-      followUpDate: '20-09-2026',
-    }
-  ];
+  const list = operations || [];
 
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
@@ -53,32 +20,30 @@ export default function OperationsTable({ operations }) {
         </Link>
       </div>
 
-      {/* Table matching reference */}
+      {list.length === 0 ? <EmptyState>Surgery scheduling data is not available from the current API.</EmptyState> : (
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-gray-100 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
               <th className="pb-3 pl-2">Patient Name</th>
               <th className="pb-3">Date Of Operation</th>
-              <th className="pb-3">Duration</th>
-              <th className="pb-3">Follow-Up Date</th>
-              <th className="pb-3 pr-2 text-right">Actions</th>
+              <th className="pb-3">Procedure</th>
+              <th className="pb-3">Lead Surgeon</th>
+              <th className="pb-3 pr-2">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 text-sm">
             {list.map((row) => (
               <tr
-                key={row.id}
+                key={row.surgeryId || row.id}
                 className="hover:bg-gray-50/70 transition-colors group"
               >
                 {/* Patient Avatar + Name */}
                 <td className="py-3.5 pl-2">
                   <div className="flex items-center space-x-3">
-                    <img
-                      src={row.patientAvatar}
-                      alt={row.patientName}
-                      className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100"
-                    />
+                    <span className="w-10 h-10 rounded-full bg-lime-100 text-lime-900 flex items-center justify-center font-bold">
+                      {(row.patientName || 'P').slice(0, 1)}
+                    </span>
                     <span className="font-bold text-gray-900 text-sm">
                       {row.patientName}
                     </span>
@@ -87,42 +52,25 @@ export default function OperationsTable({ operations }) {
 
                 {/* Date */}
                 <td className="py-3.5 text-gray-600 font-medium">
-                  {row.dateOfOperation}
+                  {row.surgeryDate || row.dateOfOperation || '—'}
                 </td>
 
                 {/* Duration */}
                 <td className="py-3.5 text-gray-600 font-medium">
-                  {row.duration}
+                  {row.surgeryType || row.procedure || '—'}
                 </td>
 
                 {/* Follow-up */}
                 <td className="py-3.5 text-gray-600 font-medium">
-                  {row.followUpDate}
+                  {row.leadSurgeonName || row.surgeon || '—'}
                 </td>
-
-                {/* Actions: Edit & Delete matching styling in reference */}
-                <td className="py-3.5 pr-2 text-right">
-                  <div className="inline-flex items-center space-x-2">
-                    <button
-                      title="Edit Operation"
-                      className="p-1.5 rounded-lg text-sky-500 hover:bg-sky-50 transition-colors border border-sky-100"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      title="Delete Operation"
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors border border-rose-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+                <td className="py-3.5 pr-2">{row.status || '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
-

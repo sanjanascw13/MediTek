@@ -4,15 +4,18 @@ info:
   description: |
     REST API contract for the MediTek Object-Oriented Hospital Information Management System.
     Provides standard JSON endpoints for patient management, clinical operations, resource tracking,
-    and departmental workflows.
+    and departmental workflows. Route and DTO definitions reflect current Spring controllers;
+    role and patient-ownership rules are summarized in docs/backend-plan/06-security-and-roles.md.
   version: 1.0.0
 servers:
-  - url: http://localhost:8080/api/v1
-    description: Local Spring Boot Development Server
+  - url: http://localhost:8080/api
+    description: Current Spring Boot controller prefix (live server not runtime-verified)
 
 tags:
   - name: Authentication
     description: User login, token issuance, and patient self-registration
+  - name: Dashboard
+    description: Current dashboard API responses (demo/baseline data only)
   - name: Patients
     description: Patient demographics, medical profiles, and history
   - name: Doctors & Staff
@@ -37,9 +40,6 @@ tags:
     description: Blood group inventories and transfusion tracking
   - name: Billing
     description: Inpatient and outpatient invoice generation and payments
-  - name: Tier 2 Workflows
-    description: Radiology, Maternity, ETU, Clinic, and Medical Unit specialized workflows
-
 components:
   securitySchemes:
     bearerAuth:
@@ -47,6 +47,14 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Enter JWT Bearer token obtained from /auth/login
+
+  parameters:
+    BillId:
+      name: billId
+      in: path
+      required: true
+      schema:
+        type: string
 
   schemas:
     ErrorResponse:
@@ -73,11 +81,12 @@ components:
           example: "Bed BED-0102 is currently OCCUPIED by active admission ADM-0015."
         path:
           type: string
-          example: "/api/v1/admissions"
-        validationErrors:
-          type: array
-          items:
-            $ref: '#/components/schemas/ValidationError'
+          example: "/api/admissions"
+          fieldErrors:
+            type: object
+            additionalProperties:
+              type: string
+            description: Present for bean-validation failures; maps field names to validation messages.
 
     ValidationError:
       type: object
@@ -141,7 +150,10 @@ components:
         - token
         - tokenType
         - expiresIn
-        - user
+        - username
+        - role
+        - name
+        - passwordChangeRequired
       properties:
         token:
           type: string
@@ -152,8 +164,19 @@ components:
         expiresIn:
           type: integer
           example: 86400
-        user:
-          $ref: '#/components/schemas/UserAccountDTO'
+        username:
+          type: string
+        role:
+          type: string
+          enum: [SUPER_ADMIN, ADMIN, DOCTOR, STAFF, PATIENT]
+          description: Legacy ADMIN accounts are returned as SUPER_ADMIN.
+        personId:
+          type: string
+          nullable: true
+        name:
+          type: string
+        passwordChangeRequired:
+          type: boolean
 
     UserAccountDTO:
       type: object
@@ -175,7 +198,7 @@ components:
           example: "sarah.smith@meditek.local"
         role:
           type: string
-          enum: [ADMIN, DOCTOR, STAFF, PATIENT]
+          enum: [SUPER_ADMIN, ADMIN, DOCTOR, STAFF, PATIENT]
           example: "DOCTOR"
         personId:
           type: string
@@ -276,6 +299,72 @@ components:
         emergencyContact:
           type: string
           example: "0779876543"
+        isActive:
+          type: boolean
+          nullable: true
+
+    PatientRegistrationResponse:
+      type: object
+      required: [patient, username, temporaryPassword]
+      properties:
+        patient:
+          $ref: '#/components/schemas/PatientDTO'
+        username:
+          type: string
+        temporaryPassword:
+          type: string
+          description: Returned once at account provisioning; never stored as plaintext.
+
+    PatientCreateRequest:
+      type: object
+      required:
+        - name
+        - dateOfBirth
+        - gender
+        - phoneNumber
+        - email
+        - bloodGroup
+        - address
+        - emergencyContact
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 128
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        phoneNumber:
+          type: string
+          pattern: '^0[0-9]{9}$'
+        email:
+          type: string
+          format: email
+          maxLength: 128
+        bloodGroup:
+          type: string
+          enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        address:
+          type: string
+          maxLength: 255
+        emergencyContact:
+          type: string
+          pattern: '^0[0-9]{9}$'
+
+    PasswordChangeRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+          minLength: 12
 
     DoctorDTO:
       type: object
@@ -295,6 +384,12 @@ components:
         name:
           type: string
           example: "Dr. Sarah Smith"
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
         specialization:
           type: string
           example: "Cardiology"
@@ -306,6 +401,7 @@ components:
           example: "0712345678"
         email:
           type: string
+          format: email
           example: "sarah.smith@meditek.local"
         departmentId:
           type: string
@@ -313,6 +409,46 @@ components:
         departmentName:
           type: string
           example: "Outpatient Department"
+        isActive:
+          type: boolean
+        username:
+          type: string
+          description: Provisioned username; may be absent from list responses.
+        temporaryPassword:
+          type: string
+          description: Returned once when an account is provisioned.
+
+    DoctorCreateRequest:
+      type: object
+      required: [name, dateOfBirth, gender, phoneNumber, email, specialization, licenseNumber]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 128
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        phoneNumber:
+          type: string
+          pattern: '^0[0-9]{9}$'
+        email:
+          type: string
+          format: email
+          maxLength: 128
+        specialization:
+          type: string
+          minLength: 2
+          maxLength: 64
+        licenseNumber:
+          type: string
+          minLength: 5
+          maxLength: 64
+        departmentId:
+          type: string
 
     MedicalStaffDTO:
       type: object
@@ -321,7 +457,6 @@ components:
         - staffId
         - name
         - role
-        - departmentName
       properties:
         personId:
           type: string
@@ -332,16 +467,60 @@ components:
         name:
           type: string
           example: "Nurse Emily Clarke"
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        phoneNumber:
+          type: string
+        email:
+          type: string
+          format: email
         role:
           type: string
           example: "Head Nurse"
+        departmentId:
+          type: string
         departmentName:
           type: string
           example: "Intensive Care Unit"
-        shift:
+        isActive:
+          type: boolean
+        username:
           type: string
-          enum: [MORNING, EVENING, NIGHT]
-          example: "MORNING"
+        temporaryPassword:
+          type: string
+          description: Returned once when an account is provisioned.
+
+    StaffCreateRequest:
+      type: object
+      required: [name, dateOfBirth, gender, phoneNumber, email, role]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 128
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        phoneNumber:
+          type: string
+          pattern: '^0[0-9]{9}$'
+        email:
+          type: string
+          format: email
+          maxLength: 128
+        role:
+          type: string
+          minLength: 2
+          maxLength: 64
+        departmentId:
+          type: string
 
     DepartmentDTO:
       type: object
@@ -349,7 +528,6 @@ components:
         - departmentId
         - departmentName
         - location
-        - type
       properties:
         departmentId:
           type: string
@@ -360,22 +538,35 @@ components:
         location:
           type: string
           example: "Block B, 3rd Floor"
-        type:
+        subtype:
           type: string
-          enum: [ETU, ICU, OPD, LABORATORY, PHARMACY, RADIOLOGY, OPERATING_THEATER, MATERNITY, CLINIC, MEDICAL_UNIT]
-          example: "ICU"
-        specificField:
+          nullable: true
+        detail:
           type: string
-          description: Subtype field value (e.g. bedCapacity, consultationRoomCount, theaterNumber)
-          example: "16"
+          nullable: true
+
+    DepartmentCreateRequest:
+      type: object
+      required: [departmentName, location]
+      properties:
+        departmentName:
+          type: string
+        location:
+          type: string
+        subtype:
+          type: string
+          nullable: true
+        detail:
+          type: string
+          nullable: true
 
     AppointmentDTO:
       type: object
       required:
         - appointmentId
-        - patientId
+        - patientPersonId
         - patientName
-        - doctorId
+        - doctorPersonId
         - doctorName
         - appointmentDate
         - status
@@ -383,15 +574,15 @@ components:
         appointmentId:
           type: string
           example: "APT-0001"
-        patientId:
+        patientPersonId:
           type: string
-          example: "PAT-0001"
+          example: "PER-000001"
         patientName:
           type: string
           example: "John Doe"
-        doctorId:
+        doctorPersonId:
           type: string
-          example: "DOC-0001"
+          example: "PER-000002"
         doctorName:
           type: string
           example: "Dr. Sarah Smith"
@@ -403,24 +594,30 @@ components:
           type: string
           enum: [SCHEDULED, COMPLETED, CANCELLED, NO_SHOW]
           example: "SCHEDULED"
+        notes:
+          type: string
+          nullable: true
 
     AppointmentCreateRequest:
       type: object
       required:
-        - patientId
-        - doctorId
+        - doctorPersonId
         - appointmentDate
       properties:
-        patientId:
+        patientPersonId:
           type: string
-          example: "PAT-0001"
-        doctorId:
+          description: Required for Staff/Super Admin; ignored for the authenticated Patient.
+          example: "PER-000001"
+        doctorPersonId:
           type: string
-          example: "DOC-0001"
+          example: "PER-000002"
         appointmentDate:
           type: string
           format: date-time
           example: "2026-10-25T09:30:00Z"
+        notes:
+          type: string
+          nullable: true
 
     WardDTO:
       type: object
@@ -450,6 +647,23 @@ components:
         occupiedBeds:
           type: integer
           example: 12
+        maintenanceBeds:
+          type: integer
+        unavailableBeds:
+          type: integer
+
+    WardCreateRequest:
+      type: object
+      required: [wardName, wardType]
+      properties:
+        wardName:
+          type: string
+          minLength: 2
+          maxLength: 128
+        wardType:
+          type: string
+          minLength: 2
+          maxLength: 64
 
     BedDTO:
       type: object
@@ -474,12 +688,26 @@ components:
           example: "Bed 02"
         availabilityStatus:
           type: string
-          enum: [AVAILABLE, OCCUPIED, MAINTENANCE, UNAVAILABLE]
+          description: OCCUPIED is a derived state; operational status is stored separately.
           example: "AVAILABLE"
+        operationalStatus:
+          type: string
+          enum: [AVAILABLE, MAINTENANCE, UNAVAILABLE]
         currentPatientName:
           type: string
           nullable: true
           example: null
+
+    BedCreateRequest:
+      type: object
+      required: [wardId, bedNumber]
+      properties:
+        wardId:
+          type: string
+        bedNumber:
+          type: string
+          minLength: 1
+          maxLength: 32
 
     BedStatusUpdateRequest:
       type: object
@@ -490,30 +718,27 @@ components:
           type: string
           enum: [AVAILABLE, MAINTENANCE, UNAVAILABLE]
           example: "MAINTENANCE"
-        reason:
-          type: string
-          example: "Routine sanitization and electrical maintenance."
 
     AdmissionDTO:
       type: object
       required:
         - admissionId
-        - patientId
+        - patientPersonId
         - patientName
         - bedId
         - bedNumber
         - wardName
-        - doctorId
-        - doctorName
+        - admittingDoctorPersonId
+        - admittingDoctorName
         - admissionDate
         - status
       properties:
         admissionId:
           type: string
           example: "ADM-0001"
-        patientId:
+        patientPersonId:
           type: string
-          example: "PAT-0001"
+          example: "PER-000001"
         patientName:
           type: string
           example: "John Doe"
@@ -526,10 +751,12 @@ components:
         wardName:
           type: string
           example: "Ward 4A - Surgical Post-Op"
-        doctorId:
+        wardId:
           type: string
-          example: "DOC-0001"
-        doctorName:
+        admittingDoctorPersonId:
+          type: string
+          example: "PER-000002"
+        admittingDoctorName:
           type: string
           example: "Dr. Sarah Smith"
         admissionDate:
@@ -556,20 +783,19 @@ components:
     AdmitPatientRequest:
       type: object
       required:
-        - patientId
+        - patientPersonId
         - bedId
-        - doctorId
-        - reason
+        - admittingDoctorPersonId
       properties:
-        patientId:
+        patientPersonId:
           type: string
-          example: "PAT-0001"
+          example: "PER-000001"
         bedId:
           type: string
           example: "BED-0102"
-        doctorId:
+        admittingDoctorPersonId:
           type: string
-          example: "DOC-0001"
+          example: "PER-000002"
         reason:
           type: string
           example: "Acute febrile illness requiring inpatient IV hydration."
@@ -577,9 +803,12 @@ components:
     TransferPatientRequest:
       type: object
       required:
+        - currentAdmissionId
         - targetBedId
-        - reason
       properties:
+        currentAdmissionId:
+          type: string
+          example: "ADM-0001"
         targetBedId:
           type: string
           example: "BED-0205"
@@ -592,11 +821,9 @@ components:
       required:
         - recordId
         - patientId
-        - doctorId
-        - doctorName
-        - diagnosis
-        - treatment
-        - recordDate
+        - patientName
+        - content
+        - createdAt
       properties:
         recordId:
           type: string
@@ -604,26 +831,149 @@ components:
         patientId:
           type: string
           example: "PAT-0001"
-        doctorId:
+        patientName:
           type: string
-          example: "DOC-0001"
-        doctorName:
+          example: "Alex Doe"
+        authorId:
           type: string
-          example: "Dr. Sarah Smith"
+          nullable: true
+          description: Readable Doctor or Staff business ID.
+        authorName:
+          type: string
+          nullable: true
         appointmentId:
           type: string
           nullable: true
           example: "APT-0001"
-        diagnosis:
+        admissionId:
           type: string
-          example: "Type II Diabetes Mellitus with mild peripheral neuropathy"
-        treatment:
+          nullable: true
+          example: "ADM-0001"
+        content:
           type: string
-          example: "Metformin 500mg BD; dietary lifestyle modification; 3-month HbA1c review"
-        recordDate:
+          maxLength: 10000
+          description: Immutable clinical note content stored by the existing model.
+        createdAt:
           type: string
           format: date-time
           example: "2026-10-20T10:15:00Z"
+
+    MedicalRecordCreateRequest:
+      type: object
+      required: [patientId, content]
+      properties:
+        patientId:
+          type: string
+          example: "PAT-0001"
+        appointmentId:
+          type: string
+          nullable: true
+        admissionId:
+          type: string
+          nullable: true
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+
+    BillLineItemDTO:
+      type: object
+      required: [lineItemId, description, quantity, unitPrice, lineTotal]
+      properties:
+        lineItemId:
+          type: string
+          example: "BLI-000001"
+        description:
+          type: string
+          maxLength: 255
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+          format: double
+          multipleOf: 0.01
+        lineTotal:
+          type: number
+          format: double
+          multipleOf: 0.01
+
+    BillLineItemRequest:
+      type: object
+      required: [description, quantity, unitPrice]
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 255
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+
+    BillPaymentDTO:
+      type: object
+      required: [paymentId, amount, paymentMethod, recordedBy, paidAt]
+      properties:
+        paymentId:
+          type: string
+          example: "PAY-000001"
+        amount:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+        paymentMethod:
+          type: string
+          enum: [CASH, BANK_TRANSFER, OTHER]
+        recordedBy:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+
+    BillPaymentRequest:
+      type: object
+      required: [amount, paymentMethod, paymentRequestId]
+      properties:
+        amount:
+          type: number
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+        paymentMethod:
+          type: string
+          enum: [CASH, BANK_TRANSFER, OTHER]
+          description: No payment gateway or card data is accepted.
+        paymentRequestId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Client-generated idempotency key to reject duplicate payment submissions.
+
+    BillCreateRequest:
+      type: object
+      required: [patientId, items]
+      properties:
+        patientId:
+          type: string
+          example: "PAT-0001"
+        admissionId:
+          type: string
+          nullable: true
+        taxRatePercent:
+          type: number
+          minimum: 0
+          maximum: 100
+          multipleOf: 0.01
+          default: 0
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/BillLineItemRequest'
 
     MedicineDTO:
       type: object
@@ -645,11 +995,47 @@ components:
           example: "Antibiotics"
         quantity:
           type: integer
+          minimum: 0
           example: 450
         price:
           type: number
           format: double
           example: 18.50
+
+    PrescriptionCreateRequest:
+      type: object
+      required: [patientId, doctorId, items]
+      properties:
+        patientId:
+          type: string
+          example: "PAT-0001"
+        doctorId:
+          type: string
+          example: "DOC-0001"
+        instructions:
+          type: string
+          maxLength: 2000
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [medicineId, prescribedQuantity, dosage, frequency, durationDays]
+            properties:
+              medicineId:
+                type: string
+              prescribedQuantity:
+                type: integer
+                minimum: 1
+              dosage:
+                type: string
+                maxLength: 64
+              frequency:
+                type: string
+                maxLength: 64
+              durationDays:
+                type: integer
+                minimum: 1
 
     PrescriptionDTO:
       type: object
@@ -659,7 +1045,6 @@ components:
         - doctorId
         - doctorName
         - prescriptionDate
-        - instructions
         - items
       properties:
         prescriptionId:
@@ -680,16 +1065,21 @@ components:
           example: "2026-10-21T11:00:00Z"
         instructions:
           type: string
+          nullable: true
           example: "Take 1 capsule every 8 hours after meals for 5 consecutive days."
         items:
           type: array
           items:
             type: object
             required:
+              - prescriptionItemId
               - medicineId
               - medicineName
               - prescribedQuantity
             properties:
+              prescriptionItemId:
+                type: string
+                example: "PRI-0001"
               medicineId:
                 type: string
                 example: "MED-0001"
@@ -699,6 +1089,67 @@ components:
               prescribedQuantity:
                 type: integer
                 example: 15
+              quantityDispensed:
+                type: integer
+                example: 5
+              remainingQuantity:
+                type: integer
+                example: 10
+              dosage:
+                type: string
+              frequency:
+                type: string
+              durationDays:
+                type: integer
+
+    DispenseMedicineRequest:
+      type: object
+      required: [prescriptionItemId, quantity]
+      properties:
+        prescriptionItemId:
+          type: string
+          example: "PRI-0001"
+        quantity:
+          type: integer
+          minimum: 1
+
+    DispensationDTO:
+      type: object
+      required:
+        - dispensationId
+        - prescriptionId
+        - prescriptionItemId
+        - medicineId
+        - patientId
+        - quantity
+        - unitPrice
+        - dispensedAt
+      properties:
+        dispensationId:
+          type: string
+          example: "DSP-0001"
+        prescriptionId:
+          type: string
+        prescriptionItemId:
+          type: string
+        medicineId:
+          type: string
+        medicineName:
+          type: string
+        patientId:
+          type: string
+        patientName:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+          format: double
+        dispensedBy:
+          type: string
+        dispensedAt:
+          type: string
+          format: date-time
 
     LabTestDTO:
       type: object
@@ -710,7 +1161,7 @@ components:
         - doctorName
         - testName
         - testDate
-        - result
+        - status
       properties:
         testId:
           type: string
@@ -734,14 +1185,39 @@ components:
           type: string
           format: date-time
           example: "2026-10-22T08:00:00Z"
-        result:
+        status:
           type: string
-          enum: [PENDING, NORMAL, ABNORMAL]
-          example: "NORMAL"
+          enum: [PENDING, COMPLETED, CANCELLED]
+          example: "PENDING"
         reportId:
           type: string
           nullable: true
           example: "REP-0001"
+        result:
+          type: string
+          nullable: true
+          enum: [NORMAL, ABNORMAL]
+          example: "NORMAL"
+
+    LabTestCreateRequest:
+      type: object
+      required: [patientId, doctorId, testName]
+      properties:
+        patientId:
+          type: string
+        doctorId:
+          type: string
+        testName:
+          type: string
+          maxLength: 128
+
+    LabTestStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [CANCELLED]
 
     LabReportDTO:
       type: object
@@ -750,6 +1226,7 @@ components:
         - testId
         - reportDate
         - resultDetails
+        - result
       properties:
         reportId:
           type: string
@@ -764,6 +1241,27 @@ components:
         resultDetails:
           type: string
           example: "WBC: 6.8 x10^9/L (Normal 4.0-11.0), Hb: 14.2 g/dL, Platelets: 245 x10^9/L. All parameters within normal reference ranges."
+        result:
+          type: string
+          enum: [NORMAL, ABNORMAL]
+        reviewingDoctorId:
+          type: string
+        reviewingDoctorName:
+          type: string
+
+    LabReportCreateRequest:
+      type: object
+      required: [resultDetails, result, reviewingDoctorId]
+      properties:
+        resultDetails:
+          type: string
+          maxLength: 4000
+        result:
+          type: string
+          enum: [NORMAL, ABNORMAL]
+        reviewingDoctorId:
+          type: string
+          description: Active Doctor who reviews the report; Doctors must submit their own Doctor ID.
 
     SurgeryDTO:
       type: object
@@ -774,8 +1272,10 @@ components:
         - doctorId
         - doctorName
         - theaterNumber
-        - surgeryDate
+        - departmentName
+        - scheduledAt
         - surgeryType
+        - durationMinutes
         - status
       properties:
         surgeryId:
@@ -796,43 +1296,201 @@ components:
         theaterNumber:
           type: string
           example: "OT-01 Suite"
-        surgeryDate:
+        departmentName:
+          type: string
+        scheduledAt:
           type: string
           format: date-time
           example: "2026-10-28T07:30:00Z"
         surgeryType:
           type: string
+          maxLength: 128
           example: "Laparoscopic Cholecystectomy"
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
         status:
           type: string
           enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED]
           example: "SCHEDULED"
+        notes:
+          type: string
+          nullable: true
+
+    SurgeryCreateRequest:
+      type: object
+      required: [patientId, theaterNumber, scheduledAt, surgeryType, durationMinutes]
+      properties:
+        patientId:
+          type: string
+        doctorId:
+          type: string
+          description: Required for Super Admin; Doctors are bound to their own profile.
+        theaterNumber:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+          description: Must be a future UTC timestamp.
+        surgeryType:
+          type: string
+          maxLength: 128
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+        notes:
+          type: string
+          maxLength: 4000
+
+    SurgeryStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [IN_PROGRESS, COMPLETED, CANCELLED]
+
+    OperatingTheaterDTO:
+      type: object
+      required: [theaterNumber, departmentName, location]
+      properties:
+        theaterNumber:
+          type: string
+        departmentName:
+          type: string
+        location:
+          type: string
 
     BloodUnitDTO:
       type: object
       required:
-        - bloodId
+        - unitId
         - bloodBankId
-        - bloodGroup
-        - quantity
+        - bloodBankName
+        - bloodType
+        - component
+        - collectionDate
+        - expirationDate
+        - quantityMl
         - availabilityStatus
       properties:
-        bloodId:
+        unitId:
           type: string
           example: "BLD-0001"
         bloodBankId:
           type: string
           example: "BB-01"
-        bloodGroup:
+        bloodBankName:
+          type: string
+        bloodType:
           type: string
           example: "O+"
-        quantity:
+          enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        component:
+          type: string
+          enum: [WHOLE_BLOOD, RED_CELLS, PLASMA, PLATELETS, CRYOPRECIPITATE]
+        collectionDate:
+          type: string
+          format: date
+        expirationDate:
+          type: string
+          format: date
+        quantityMl:
           type: integer
+          minimum: 0
           example: 10
         availabilityStatus:
           type: string
-          enum: [AVAILABLE, RESERVED, DISPENSED, EXPIRED]
+          enum: [AVAILABLE, DEPLETED, EXPIRED]
           example: "AVAILABLE"
+
+    BloodBankDTO:
+      type: object
+      required: [bloodBankId, name, location]
+      properties:
+        bloodBankId:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+
+    BloodBankCreateRequest:
+      type: object
+      required: [name, location]
+      properties:
+        name:
+          type: string
+          maxLength: 128
+        location:
+          type: string
+          maxLength: 128
+
+    BloodUnitCreateRequest:
+      type: object
+      required: [bloodBankId, bloodType, component, collectionDate, expirationDate, quantityMl]
+      properties:
+        bloodBankId:
+          type: string
+        bloodType:
+          type: string
+          enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        component:
+          type: string
+          enum: [WHOLE_BLOOD, RED_CELLS, PLASMA, PLATELETS, CRYOPRECIPITATE]
+        collectionDate:
+          type: string
+          format: date
+        expirationDate:
+          type: string
+          format: date
+        quantityMl:
+          type: integer
+          minimum: 1
+
+    BloodIssueCreateRequest:
+      type: object
+      required: [unitId, patientId, quantityMl]
+      properties:
+        unitId:
+          type: string
+        patientId:
+          type: string
+        quantityMl:
+          type: integer
+          minimum: 1
+        purpose:
+          type: string
+          maxLength: 500
+
+    BloodIssueDTO:
+      type: object
+      required: [bloodIssueId, unitId, bloodType, component, patientId, patientName, quantityMl, issuedBy, issuedAt]
+      properties:
+        bloodIssueId:
+          type: string
+        unitId:
+          type: string
+        bloodType:
+          type: string
+        component:
+          type: string
+        patientId:
+          type: string
+        patientName:
+          type: string
+        quantityMl:
+          type: integer
+        purpose:
+          type: string
+          nullable: true
+        issuedBy:
+          type: string
+        issuedAt:
+          type: string
+          format: date-time
 
     BillDTO:
       type: object
@@ -840,69 +1498,68 @@ components:
         - billId
         - patientId
         - patientName
-        - amount
-        - paymentStatus
-        - billDate
+        - items
+        - subtotal
+        - taxRatePercent
+        - taxAmount
+        - amountTotal
+        - amountPaid
+        - balanceDue
+        - status
+        - issuedAt
       properties:
         billId:
           type: string
-          example: "BIL-0001"
+          example: "BIL-000001"
         patientId:
           type: string
           example: "PAT-0001"
         patientName:
           type: string
           example: "John Doe"
-        amount:
+        admissionId:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillLineItemDTO'
+        subtotal:
           type: number
-          format: double
-          example: 12500.00
-        paymentStatus:
+          multipleOf: 0.01
+        taxRatePercent:
+          type: number
+          minimum: 0
+          maximum: 100
+          multipleOf: 0.01
+        taxAmount:
+          type: number
+          multipleOf: 0.01
+        amountTotal:
+          type: number
+          multipleOf: 0.01
+        amountPaid:
+          type: number
+          multipleOf: 0.01
+        balanceDue:
+          type: number
+          minimum: 0
+          multipleOf: 0.01
+        status:
           type: string
-          enum: [PAID, PENDING, PARTIAL, CANCELLED]
+          enum: [PENDING, PARTIAL, PAID, CANCELLED]
           example: "PENDING"
-        billDate:
+        issuedAt:
           type: string
           format: date-time
-          example: "2026-10-22T16:00:00Z"
-        description:
-          type: string
-          example: "Inpatient stay 2 nights (Ward 4A) + FBC Lab Test + Medication"
-
-    Tier2RecordDTO:
-      type: object
-      required:
-        - recordId
-        - workflowType
-        - patientId
-        - patientName
-        - timestamp
-        - details
-      properties:
-        recordId:
-          type: string
-          example: "T2-RAD-0001"
-        workflowType:
-          type: string
-          enum: [RADIOLOGY, MATERNITY, ETU, CLINIC, MEDICAL_UNIT]
-          example: "RADIOLOGY"
-        patientId:
-          type: string
-          example: "PAT-0001"
-        patientName:
-          type: string
-          example: "John Doe"
-        timestamp:
+        paidAt:
           type: string
           format: date-time
-          example: "2026-10-22T10:00:00Z"
-        details:
-          type: object
-          description: Workflow specific fields (e.g., equipmentName, emergencyLevel, etc.)
-          example:
-            equipmentName: "3T MRI Siemens"
-            scanType: "Brain MRI with Contrast"
-            status: "Completed"
+          nullable: true
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillPaymentDTO'
 
 paths:
   /auth/login:
@@ -961,54 +1618,102 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /patients:
-    get:
-      tags: [Patients]
-      summary: List all registered patients with pagination and search
-      operationId: listPatients
+  /auth/change-password:
+    post:
+      tags: [Authentication]
+      summary: Change the authenticated account password
+      description: Temporary-password accounts may access this endpoint before other protected API routes.
+      operationId: changePassword
       security:
         - bearerAuth: []
-      parameters:
-        - name: query
-          in: query
-          required: false
-          schema:
-            type: string
-          description: Search term (name, patientId, phone)
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 0
-        - name: size
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 10
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+      responses:
+        '204':
+          description: Password changed; no response body.
+        '400':
+          description: Password request validation failed.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard/stats:
+    get:
+      tags: [Dashboard]
+      summary: Retrieve dashboard statistics
+      description: Current implementation returns baseline/demo figures rather than verified real-time hospital aggregates.
+      operationId: getDashboardStats
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: Paginated patient list
+          description: Dashboard totals and chart/operation summary data.
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  content:
+                  newPatients:
+                    type: integer
+                    format: int64
+                  appointments:
+                    type: integer
+                    format: int64
+                  earning:
+                    type: number
+                    format: double
+                  operations:
+                    type: integer
+                    format: int64
+                  patientDistributions:
                     type: array
                     items:
-                      $ref: '#/components/schemas/PatientDTO'
-                  page:
-                    type: integer
-                  size:
-                    type: integer
-                  totalElements:
-                    type: integer
-                  totalPages:
-                    type: integer
-                  last:
-                    type: boolean
+                      type: object
+                      additionalProperties: true
+                  recentOperations:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+
+  /dashboard/patient-chart:
+    get:
+      tags: [Dashboard]
+      summary: Retrieve patient distribution chart values
+      description: Current implementation returns fixed demonstration chart data.
+      operationId: getPatientChart
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Chart category objects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+
+  /patients:
+    get:
+      tags: [Patients]
+      summary: List patients in the authenticated role's scope
+      operationId: listPatients
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Patient list; Doctors receive patients with an appointment in their care.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PatientDTO'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1024,14 +1729,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatientDTO'
+              $ref: '#/components/schemas/PatientCreateRequest'
       responses:
         '201':
-          description: Patient created
+          description: Patient created with an account and one-time temporary credentials.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PatientDTO'
+                $ref: '#/components/schemas/PatientRegistrationResponse'
 
   /patients/me:
     get:
@@ -1050,23 +1755,6 @@ paths:
         '403':
           description: Caller is not a Patient account
 
-  /patients/me/appointments:
-    get:
-      tags: [Patients]
-      summary: Retrieve current authenticated patient's appointments (view-only)
-      operationId: getCurrentPatientAppointments
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: List of own appointments
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/AppointmentDTO'
-
   /patients/me/medical-records:
     get:
       tags: [Patients]
@@ -1083,21 +1771,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MedicalRecordDTO'
-
-  /patients/me/admission:
-    get:
-      tags: [Patients]
-      summary: Retrieve current inpatient admission and bed allocation if admitted
-      operationId: getCurrentPatientAdmission
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Active admission details or null if outpatient
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AdmissionDTO'
 
   /patients/me/bills:
     get:
@@ -1137,12 +1810,10 @@ paths:
                 $ref: '#/components/schemas/PatientDTO'
         '404':
           description: Patient not found
-
-  /patients/{patientId}/history:
-    get:
+    delete:
       tags: [Patients]
-      summary: Get full clinical history (Doctor must be assigned to patient)
-      operationId: getPatientFullHistory
+      summary: Deactivate a patient and disable the associated account
+      operationId: deactivatePatient
       security:
         - bearerAuth: []
       parameters:
@@ -1152,39 +1823,17 @@ paths:
           schema:
             type: string
       responses:
-        '200':
-          description: Full history (records, prescriptions, lab results)
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  patient:
-                    $ref: '#/components/schemas/PatientDTO'
-                  medicalRecords:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/MedicalRecordDTO'
-                  prescriptions:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/PrescriptionDTO'
-                  labReports:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/LabTestDTO'
-        '403':
-          description: Access Denied. Doctor is not assigned to this patient.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+        '204':
+          description: Patient deactivated.
 
   /doctors:
     get:
       tags: [Doctors & Staff]
-      summary: List all active doctors
+      summary: List doctors
       operationId: listDoctors
+      description: Returns active Doctors to clinical and patient roles; Super Admin can also see inactive Doctors for account reactivation.
+      security:
+        - bearerAuth: []
       responses:
         '200':
           content:
@@ -1193,6 +1842,74 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DoctorDTO'
+    post:
+      tags: [Doctors & Staff]
+      summary: Create a Doctor and account
+      operationId: createDoctor
+      description: Restricted to Super Admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorCreateRequest'
+      responses:
+        '201':
+          description: Doctor created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorDTO'
+
+  /doctors/{id}:
+    get:
+      tags: [Doctors & Staff]
+      summary: Retrieve a Doctor by business or person ID
+      operationId: getDoctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Doctor profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorDTO'
+
+  /doctors/{id}/status:
+    patch:
+      tags: [Doctors & Staff]
+      summary: Activate or deactivate a Doctor
+      operationId: setDoctorStatus
+      description: Restricted to Super Admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: active
+          in: query
+          required: true
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Updated Doctor profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorDTO'
 
   /staff:
     get:
@@ -1209,12 +1926,82 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MedicalStaffDTO'
+    post:
+      tags: [Doctors & Staff]
+      summary: Create Staff and an account
+      operationId: createStaff
+      description: Restricted to Super Admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffCreateRequest'
+      responses:
+        '201':
+          description: Staff profile created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicalStaffDTO'
+
+  /staff/{id}:
+    get:
+      tags: [Doctors & Staff]
+      summary: Retrieve Staff by business or person ID
+      operationId: getStaff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Staff profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicalStaffDTO'
+
+  /staff/{id}/status:
+    patch:
+      tags: [Doctors & Staff]
+      summary: Activate or deactivate Staff
+      operationId: setStaffStatus
+      description: Restricted to Super Admin.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: active
+          in: query
+          required: true
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Updated Staff profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicalStaffDTO'
 
   /departments:
     get:
       tags: [Departments]
       summary: List all 10 hospital department divisions
       operationId: listDepartments
+      security:
+        - bearerAuth: []
       responses:
         '200':
           content:
@@ -1223,25 +2010,71 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DepartmentDTO'
+    post:
+      tags: [Departments]
+      summary: Create a department
+      operationId: createDepartment
+      description: Restricted to Super Admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreateRequest'
+      responses:
+        '201':
+          description: Department created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentDTO'
+
+  /departments/{id}:
+    get:
+      tags: [Departments]
+      summary: Retrieve a department
+      operationId: getDepartment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Department details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentDTO'
+    delete:
+      tags: [Departments]
+      summary: Delete a department when no restricted relationships prevent deletion
+      operationId: deleteDepartment
+      description: Restricted to Super Admin; database foreign keys use RESTRICT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Department deleted.
 
   /appointments:
     get:
       tags: [Appointments]
-      summary: List scheduled appointments
+      summary: List appointments within the authenticated role's scope
       operationId: listAppointments
       security:
         - bearerAuth: []
-      parameters:
-        - name: doctorId
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: status
-          in: query
-          required: false
-          schema:
-            type: string
       responses:
         '200':
           content:
@@ -1269,11 +2102,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/AppointmentDTO'
 
+  /appointments/{id}/status:
+    patch:
+      tags: [Appointments]
+      summary: Update an appointment status
+      description: Doctor may complete only an assigned appointment; Staff/Super Admin may update scheduled appointments.
+      operationId: updateAppointmentStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [COMPLETED, CANCELLED, NO_SHOW]
+      responses:
+        '200':
+          description: Updated appointment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentDTO'
+
   /wards:
     get:
       tags: [Wards & Beds]
       summary: List all hospital wards with bed count summaries
       operationId: listWards
+      security:
+        - bearerAuth: []
       responses:
         '200':
           content:
@@ -1282,12 +2145,34 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/WardDTO'
+    post:
+      tags: [Wards & Beds]
+      summary: Create a ward
+      operationId: createWard
+      description: Restricted to Super Admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WardCreateRequest'
+      responses:
+        '201':
+          description: Ward created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WardDTO'
 
   /beds:
     get:
       tags: [Wards & Beds]
       summary: Query bed inventory and availability
       operationId: listBeds
+      security:
+        - bearerAuth: []
       parameters:
         - name: wardId
           in: query
@@ -1307,6 +2192,26 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/BedDTO'
+    post:
+      tags: [Wards & Beds]
+      summary: Create a bed in a ward
+      operationId: createBed
+      description: Restricted to Super Admin.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BedCreateRequest'
+      responses:
+        '201':
+          description: Bed created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BedDTO'
 
   /beds/{bedId}/status:
     patch:
@@ -1340,20 +2245,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /admissions:
+  /admissions/active:
     get:
       tags: [Admissions]
-      summary: List inpatient admissions
-      operationId: listAdmissions
+      summary: List active admissions within the authenticated role's scope
+      operationId: listActiveAdmissions
       security:
         - bearerAuth: []
-      parameters:
-        - name: status
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [ACTIVE, DISCHARGED, TRANSFERRED]
       responses:
         '200':
           content:
@@ -1362,6 +2260,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/AdmissionDTO'
+
+  /admissions:
     post:
       tags: [Admissions]
       summary: Admit a patient to an available bed
@@ -1411,19 +2311,13 @@ paths:
         '404':
           description: Admission not found or already discharged
 
-  /admissions/{admissionId}/transfer:
+  /admissions/transfer:
     post:
       tags: [Admissions]
       summary: Transfer patient to a new available bed (Closes current as TRANSFERRED, opens new ACTIVE)
       operationId: transferPatient
       security:
         - bearerAuth: []
-      parameters:
-        - name: admissionId
-          in: path
-          required: true
-          schema:
-            type: string
       requestBody:
         required: true
         content:
@@ -1467,7 +2361,7 @@ paths:
                   $ref: '#/components/schemas/MedicalRecordDTO'
     post:
       tags: [Medical Records]
-      summary: Create clinical diagnosis and treatment record
+      summary: Create an immutable patient-linked clinical note
       operationId: createMedicalRecord
       security:
         - bearerAuth: []
@@ -1476,19 +2370,31 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MedicalRecordDTO'
+              $ref: '#/components/schemas/MedicalRecordCreateRequest'
       responses:
         '201':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/MedicalRecordDTO'
+        '400':
+          description: Invalid patient or note fields.
+        '403':
+          description: Caller is not authorized for the patient or record workflow.
 
   /medicines:
     get:
       tags: [Pharmacy]
       summary: List pharmaceutical medications and stock counts
       operationId: listMedicines
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           content:
@@ -1524,13 +2430,62 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PrescriptionDTO'
+              $ref: '#/components/schemas/PrescriptionCreateRequest'
       responses:
         '201':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PrescriptionDTO'
+
+  /prescriptions/{prescriptionId}/dispensations:
+    post:
+      tags: [Pharmacy]
+      summary: Dispense a prescribed quantity and reduce inventory atomically
+      operationId: dispensePrescriptionMedicine
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: prescriptionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispenseMedicineRequest'
+      responses:
+        '201':
+          description: Dispensation recorded and inventory updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DispensationDTO'
+        '409':
+          description: Requested amount exceeds prescribed remaining quantity or available stock.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /dispensations:
+    get:
+      tags: [Pharmacy]
+      summary: List role-scoped dispensing history
+      operationId: listDispensations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DispensationDTO'
 
   /lab-tests:
     get:
@@ -1539,6 +2494,18 @@ paths:
       operationId: listLabTests
       security:
         - bearerAuth: []
+      parameters:
+        - name: patientId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, COMPLETED, CANCELLED]
       responses:
         '200':
           content:
@@ -1558,13 +2525,42 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LabTestDTO'
+              $ref: '#/components/schemas/LabTestCreateRequest'
       responses:
         '201':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LabTestDTO'
+
+  /lab-tests/{testId}/status:
+    patch:
+      tags: [Laboratory]
+      summary: Cancel a pending laboratory order
+      operationId: updateLabTestStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabTestStatusRequest'
+      responses:
+        '200':
+          description: Laboratory order status changed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabTestDTO'
+        '409':
+          description: Only pending orders may be cancelled.
 
   /lab-tests/{testId}/report:
     post:
@@ -1584,18 +2580,27 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - resultDetails
-                - result
-              properties:
-                resultDetails:
-                  type: string
-                result:
-                  type: string
-                  enum: [NORMAL, ABNORMAL]
+              $ref: '#/components/schemas/LabReportCreateRequest'
       responses:
         '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabReportDTO'
+    get:
+      tags: [Laboratory]
+      summary: Retrieve a role-scoped laboratory report
+      operationId: getLabReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
           content:
             application/json:
               schema:
@@ -1604,10 +2609,27 @@ paths:
   /surgeries:
     get:
       tags: [Surgeries]
-      summary: List scheduled surgical procedures
+      summary: Search role-scoped surgery schedules and history
       operationId: listSurgeries
       security:
         - bearerAuth: []
+      parameters:
+        - name: patientId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           content:
@@ -1627,7 +2649,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SurgeryDTO'
+              $ref: '#/components/schemas/SurgeryCreateRequest'
       responses:
         '201':
           content:
@@ -1635,11 +2657,109 @@ paths:
               schema:
                 $ref: '#/components/schemas/SurgeryDTO'
 
+  /surgeries/{surgeryId}/status:
+    patch:
+      tags: [Surgeries]
+      summary: Advance or cancel a surgery through valid lifecycle states
+      operationId: updateSurgeryStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: surgeryId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SurgeryStatusRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SurgeryDTO'
+        '409':
+          description: The requested surgery status transition is invalid.
+
+  /operating-theaters:
+    get:
+      tags: [Surgeries]
+      summary: List operating theaters available for scheduling
+      operationId: listOperatingTheaters
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OperatingTheaterDTO'
+
+  /blood-bank/banks:
+    get:
+      tags: [Blood Bank]
+      summary: List active blood-bank locations
+      operationId: listBloodBanks
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BloodBankDTO'
+    post:
+      tags: [Blood Bank]
+      summary: Configure a blood-bank location
+      operationId: createBloodBank
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BloodBankCreateRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodBankDTO'
+
   /blood-bank/units:
     get:
       tags: [Blood Bank]
-      summary: Query blood units inventory
+      summary: Search blood batch inventory by group, component, or bank
       operationId: listBloodUnits
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: bloodType
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+        - name: component
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [WHOLE_BLOOD, RED_CELLS, PLASMA, PLATELETS, CRYOPRECIPITATE]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           content:
@@ -1648,14 +2768,87 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/BloodUnitDTO'
+    post:
+      tags: [Blood Bank]
+      summary: Receive a blood batch into inventory
+      operationId: receiveBloodUnit
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BloodUnitCreateRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodUnitDTO'
+        '400':
+          description: Invalid blood group, quantity, or collection/expiry dates.
+
+  /blood-bank/issues:
+    get:
+      tags: [Blood Bank]
+      summary: List authorized blood issue history
+      operationId: listBloodIssues
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BloodIssueDTO'
+    post:
+      tags: [Blood Bank]
+      summary: Issue available volume from an unexpired blood batch
+      operationId: issueBlood
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BloodIssueCreateRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BloodIssueDTO'
+        '409':
+          description: Expired/inactive inventory, incompatible recorded blood group, or insufficient volume.
 
   /bills:
     get:
       tags: [Billing]
-      summary: Query patient invoices and bills
+      summary: Query invoices within the authenticated user's scope
       operationId: listBills
       security:
         - bearerAuth: []
+      parameters:
+        - name: patientId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, PARTIAL, PAID, CANCELLED]
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           content:
@@ -1675,61 +2868,119 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BillDTO'
+              $ref: '#/components/schemas/BillCreateRequest'
       responses:
         '201':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/BillDTO'
+        '400':
+          description: Invalid patient, line items, or tax rate.
+        '403':
+          description: Caller is not authorized to create invoices.
 
-  /tier2/{workflowType}:
-    get:
-      tags: [Tier 2 Workflows]
-      summary: Retrieve specialized records for Tier 2 departments
-      operationId: listTier2Records
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: workflowType
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [radiology, maternity, etu, clinic, medical-unit]
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Tier2RecordDTO'
+  /bills/{billId}/items:
     post:
-      tags: [Tier 2 Workflows]
-      summary: Create specialized departmental record
-      operationId: createTier2Record
+      tags: [Billing]
+      summary: Add a line item to an unpaid invoice
+      operationId: addBillLineItem
       security:
         - bearerAuth: []
       parameters:
-        - name: workflowType
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [radiology, maternity, etu, clinic, medical-unit]
+        - $ref: '#/components/parameters/BillId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Tier2RecordDTO'
+              $ref: '#/components/schemas/BillLineItemRequest'
       responses:
-        '201':
+        '200':
+          description: Invoice totals recalculated.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Tier2RecordDTO'
+                $ref: '#/components/schemas/BillDTO'
+        '409':
+          description: Invoice is paid, cancelled, or has begun payment.
+
+  /bills/{billId}/items/{lineItemId}:
+    put:
+      tags: [Billing]
+      summary: Update a line item before payment begins
+      operationId: updateBillLineItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillId'
+        - name: lineItemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillLineItemRequest'
+      responses:
+        '200':
+          description: Invoice totals recalculated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillDTO'
+        '409':
+          description: Invoice is paid, cancelled, or has begun payment.
+    delete:
+      tags: [Billing]
+      summary: Remove a line item before payment begins
+      operationId: removeBillLineItem
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillId'
+        - name: lineItemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invoice totals recalculated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillDTO'
+        '409':
+          description: Invoice is paid, has begun payment, or would have no items.
+
+  /bills/{billId}/payments:
+    post:
+      tags: [Billing]
+      summary: Record an offline payment entry without processing money
+      operationId: recordBillPayment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillPaymentRequest'
+      responses:
+        '201':
+          description: Payment recorded; invoice balance and status updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillDTO'
+        '409':
+          description: Duplicate payment request, invoice not payable, or amount exceeds balance.
 
 responses:
   Unauthorized:

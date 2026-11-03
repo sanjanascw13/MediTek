@@ -15,29 +15,34 @@ import {
   Scissors,
   Droplets,
   Receipt,
+  FileText,
   Settings,
-  HelpCircle,
+  UserCog,
   LogOut
 } from 'lucide-react';
 import { api } from '../services/api';
+import { rolePaths } from '../services/roleAccess';
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const currentUser = api.getCurrentUser();
+  const role = api.getCurrentRole();
+  const allowedPaths = rolePaths[role] || ['/'];
 
   const handleLogout = () => {
     api.logout();
     navigate('/login');
   };
 
-  const navItems = [
+  const allNavItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+    { name: 'User Management', path: '/user-management', icon: UserCog },
     { name: 'Appointments', path: '/appointments', icon: CalendarDays },
     { name: 'Doctors', path: '/doctors', icon: UserCheck },
     { name: 'Staff', path: '/staff', icon: Users },
   ];
 
-  const moduleItems = [
+  const allModuleItems = [
     { name: 'Patients', path: '/patients', icon: UserCircle },
     { name: 'Departments', path: '/departments', icon: Building2 },
     { name: 'Wards & Beds', path: '/wards', icon: Bed },
@@ -46,8 +51,20 @@ export default function Sidebar() {
     { name: 'Surgeries', path: '/surgeries', icon: Scissors },
     { name: 'Blood Bank', path: '/blood-bank', icon: Droplets },
     { name: 'Billing', path: '/billing', icon: Receipt },
+    { name: 'Medical Records', path: '/medical-records', icon: FileText },
     { name: 'Messages', path: '/messages', icon: MessageSquare },
   ];
+  const patientItems = [
+    { name: 'My Appointments', path: '/patient/appointments', icon: CalendarDays },
+    { name: 'My Prescriptions', path: '/patient/prescriptions', icon: Pill },
+    { name: 'My Lab Results', path: '/labs', icon: Microscope },
+    { name: 'My Bills', path: '/patient/bills', icon: Receipt },
+    { name: 'My Health Records', path: '/patient/records', icon: UserCircle },
+  ];
+  const navItems = allNavItems.filter((item) => allowedPaths.includes(item.path));
+  const moduleItems = role === 'PATIENT'
+    ? patientItems
+    : allModuleItems.filter((item) => allowedPaths.includes(item.path));
 
   return (
     <aside className="w-64 min-h-screen bg-gradient-to-b from-[#111912] via-[#142016] to-[#0d140e] text-gray-300 flex flex-col justify-between p-4 rounded-3xl m-3 shadow-2xl border border-[#203023]">
@@ -98,7 +115,7 @@ export default function Sidebar() {
         {/* Modules Navigation */}
         <div>
           <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-            Modules
+            {role === 'PATIENT' ? 'My Health' : 'Modules'}
           </p>
           <nav className="space-y-1 max-h-[36vh] overflow-y-auto pr-1">
             {moduleItems.map((item) => {
@@ -126,35 +143,30 @@ export default function Sidebar() {
 
       {/* Bottom Footer Section */}
       <div className="pt-4 border-t border-white/10 space-y-3">
-        <NavLink
-          to="/settings"
-          className="flex items-center space-x-3 px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-        >
-          <Settings className="w-4 h-4" />
-          <span>Settings</span>
-        </NavLink>
-        <NavLink
-          to="/help"
-          className="flex items-center space-x-3 px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-        >
-          <HelpCircle className="w-4 h-4" />
-          <span>Help Centre</span>
-        </NavLink>
+        {allowedPaths.includes('/settings') && (
+          <NavLink
+            to="/settings"
+            className="flex items-center space-x-3 px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <Settings className="w-4 h-4" />
+            <span>Settings</span>
+          </NavLink>
+        )}
 
-        {/* Guy Hawkins / User Pill at bottom matching reference image */}
+        {/* Current signed-in user */}
         <div className="flex items-center justify-between p-2.5 rounded-2xl bg-white/5 border border-white/5 mt-2">
           <div className="flex items-center space-x-3">
             <img
               src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face"
-              alt="Guy Hawkins"
+              alt={currentUser?.name || currentUser?.username || 'Current user'}
               className="w-9 h-9 rounded-xl object-cover ring-2 ring-lime-400/40"
             />
             <div>
               <p className="text-sm font-semibold text-white leading-none">
-                Guy Hawkins
+                {currentUser?.name || currentUser?.username || 'Clinical User'}
               </p>
               <p className="text-xs text-lime-400 font-medium mt-1">
-                Manager
+                {currentUser?.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : role || currentUser?.role || 'User'}
               </p>
             </div>
           </div>
@@ -170,4 +182,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-

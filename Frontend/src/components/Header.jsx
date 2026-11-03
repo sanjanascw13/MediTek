@@ -14,6 +14,7 @@ export default function Header({ onQuickAction }) {
   const [isDark, setIsDark] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const user = api.getCurrentUser();
+  const isAdmin = api.getCurrentRole() === 'ADMIN';
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -40,13 +41,15 @@ export default function Header({ onQuickAction }) {
         </div>
 
         {/* + Space Button from reference */}
-        <button
-          onClick={onQuickAction}
-          className="flex items-center space-x-1.5 px-4 py-2.5 rounded-2xl bg-[#e6f8cc] hover:bg-[#dcf5ba] text-[#284813] font-semibold text-xs transition-all shadow-sm active:scale-95 shrink-0"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-lime-600" />
-          <span>+ Space</span>
-        </button>
+        {isAdmin && (
+          <button
+            onClick={onQuickAction}
+            className="flex items-center space-x-1.5 px-4 py-2.5 rounded-2xl bg-[#e6f8cc] hover:bg-[#dcf5ba] text-[#284813] font-semibold text-xs transition-all shadow-sm active:scale-95 shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-lime-600" />
+            <span>+ Space</span>
+          </button>
+        )}
       </div>
 
       {/* Right Tools & Profile */}
@@ -87,15 +90,15 @@ export default function Header({ onQuickAction }) {
         <div className="flex items-center space-x-3 pl-2 py-1 pr-3 rounded-2xl bg-white border border-gray-200 shadow-sm cursor-pointer hover:bg-gray-50/80 transition-all">
           <img
             src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face"
-            alt="Sarah Smith"
+            alt={user?.name || user?.username || 'Current user'}
             className="w-9 h-9 rounded-xl object-cover ring-1 ring-lime-400"
           />
           <div className="text-left">
             <p className="text-xs font-bold text-gray-800 leading-tight">
-              Sarah Smith
+              {user?.name || user?.username || 'Clinical User'}
             </p>
             <p className="text-[11px] text-gray-400 leading-tight">
-              @nathan_oallins
+              {user?.username ? `@${user.username}` : ''}
             </p>
           </div>
           <ChevronDown className="w-4 h-4 text-gray-400 stroke-[2]" />
@@ -104,4 +107,3 @@ export default function Header({ onQuickAction }) {
     </header>
   );
 }
-

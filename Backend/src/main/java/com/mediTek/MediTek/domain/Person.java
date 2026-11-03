@@ -40,5 +40,7 @@ public abstract class Person {
 
     @Column(name = "email", length = 128, nullable = false, unique = true)
     private String email;
-}
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+}
