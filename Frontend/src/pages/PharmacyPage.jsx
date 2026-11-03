@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { api } from '../services/api';
 import {
+  Building2,
   CheckCircle,
   Pill,
   Search,
@@ -38,6 +39,15 @@ export default function PharmacyPage() {
   const [dispensations, setDispensations] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [showMedicineModal, setShowMedicineModal] = useState(false);
+  const [medicineForm, setMedicineForm] = useState({
+    name: '',
+    category: 'Analgesic',
+    price: '25.00',
+    stockQuantity: '100',
+    departmentId: '',
+  });
 
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -57,13 +67,23 @@ export default function PharmacyPage() {
   const role = api.getCurrentRole();
   const canPrescribe = ['DOCTOR', 'SUPER_ADMIN', 'ADMIN'].includes(role);
   const canDispense = ['STAFF', 'SUPER_ADMIN', 'ADMIN'].includes(role);
+  const canAddMedicine = ['SUPER_ADMIN', 'ADMIN'].includes(role);
 
   const loadData = useCallback(async (query = '') => {
     setLoading(true);
     setError('');
     try {
-      const medicineList = await api.getMedicines(query);
+      const [medicineList, deptList] = await Promise.all([
+        api.getMedicines(query),
+        api.getDepartments(),
+      ]);
       setMedicines(medicineList);
+      const depts = Array.isArray(deptList) ? deptList : [];
+      setDepartments(depts);
+      setMedicineForm((current) => ({
+        ...current,
+        departmentId: current.departmentId || depts[0]?.departmentId || '',
+      }));
       if (api.isMockMode()) {
         setPrescriptions([]);
         setDispensations([]);
@@ -133,6 +153,50 @@ export default function PharmacyPage() {
       setQuantity('1');
     } catch (requestError) {
       setError(api.getErrorMessage(requestError, 'Unable to dispense medication.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateMedicine = async (e) => {
+    e.preventDefault();
+    if (!medicineForm.name.trim()) {
+      setError('Medicine name is required.');
+      return;
+    }
+    const priceNum = Number(medicineForm.price);
+    if (isNaN(priceNum) || priceNum < 0) {
+      setError('Please enter a valid price (greater than or equal to 0).');
+      return;
+    }
+    const stockNum = Number(medicineForm.stockQuantity);
+    if (isNaN(stockNum) || stockNum < 0) {
+      setError('Please enter a valid stock quantity.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const created = await api.createMedicine({
+        name: medicineForm.name.trim(),
+        category: medicineForm.category.trim(),
+        price: priceNum,
+        stockQuantity: Math.floor(stockNum),
+        departmentId: medicineForm.departmentId || null,
+      });
+      setSuccess(`Medicine "${created.name}" (${created.medicineId}) added successfully to formulary.`);
+      setShowMedicineModal(false);
+      setMedicineForm({
+        name: '',
+        category: 'Analgesic',
+        price: '25.00',
+        stockQuantity: '100',
+        departmentId: departments[0]?.departmentId || '',
+      });
+      await loadData(search);
+    } catch (err) {
+      setError(api.getErrorMessage(err, 'Unable to add medicine item.'));
     } finally {
       setSaving(false);
     }
@@ -243,6 +307,20 @@ export default function PharmacyPage() {
             />
           </div>
 
+          {canAddMedicine && (
+            <button
+              type="button"
+              onClick={() => {
+                setError('');
+                setShowMedicineModal(true);
+              }}
+              className="px-4 py-2.5 rounded-2xl bg-[#a3e635] text-[#142008] font-bold text-xs sm:text-sm hover:bg-lime-400 transition-all flex items-center gap-2 shrink-0 shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              Add Medicine
+            </button>
+          )}
+
           {canPrescribe && (
             <button
               type="button"
@@ -305,6 +383,10 @@ export default function PharmacyPage() {
                       <h4 className="text-sm font-bold text-gray-900 line-clamp-1">{med.name}</h4>
                       <p className="text-xs text-gray-400 mt-0.5">
                         Price: <strong className="text-gray-900">${Number(med.price).toFixed(2)}</strong>
+                      </p>
+                      <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                        <Building2 className="w-3 h-3 text-lime-700 shrink-0" />
+                        <span className="truncate">{med.departmentName || 'Central Pharmacy'}</span>
                       </p>
                     </div>
 
@@ -779,6 +861,129 @@ export default function PharmacyPage() {
             </div>
           )}
         </section>
+      )}
+      {showMedicineModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-gray-100 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Pill className="w-5 h-5 text-lime-600" />
+                Add Pharmacy Medicine Item
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowMedicineModal(false)}
+                className="p-1 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateMedicine} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Department
+                </label>
+                <select
+                  value={medicineForm.departmentId}
+                  onChange={(e) => setMedicineForm({ ...medicineForm, departmentId: e.target.value })}
+                  className="w-full rounded-2xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-lime-400 focus:outline-none"
+                >
+                  <option value="">None / General Formulary</option>
+                  {departments.map((dept) => (
+                    <option key={dept.departmentId} value={dept.departmentId}>
+                      {dept.departmentName} ({dept.departmentId})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Select the clinical or dispensing department.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Medicine Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Azithromycin 250mg"
+                  value={medicineForm.name}
+                  onChange={(e) => setMedicineForm({ ...medicineForm, name: e.target.value })}
+                  className="w-full rounded-2xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-lime-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Category / Classification
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Antibiotic, Analgesic, Cardiovascular"
+                  value={medicineForm.category}
+                  onChange={(e) => setMedicineForm({ ...medicineForm, category: e.target.value })}
+                  className="w-full rounded-2xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-lime-400 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Unit Price ($/LKR) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    placeholder="25.00"
+                    value={medicineForm.price}
+                    onChange={(e) => setMedicineForm({ ...medicineForm, price: e.target.value })}
+                    className="w-full rounded-2xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-lime-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Initial Stock *
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    required
+                    placeholder="100"
+                    value={medicineForm.stockQuantity}
+                    onChange={(e) => setMedicineForm({ ...medicineForm, stockQuantity: e.target.value })}
+                    className="w-full rounded-2xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-lime-400 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-lime-50 rounded-2xl border border-lime-200 text-xs text-lime-900">
+                <strong>Medicine ID:</strong> Auto-incremented business identifier (e.g. <code>MED-00001X</code>).
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMedicineModal(false)}
+                  className="rounded-2xl bg-gray-100 px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-2xl bg-[#a3e635] px-5 py-2.5 text-xs font-bold text-[#142008] hover:bg-lime-400 disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Add Medicine'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

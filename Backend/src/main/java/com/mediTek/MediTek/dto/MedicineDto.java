@@ -7,6 +7,11 @@ public record MedicineDto(
         String medicineName,
         String category,
         Integer quantity,
-        BigDecimal price
+        BigDecimal price,
+        String departmentId,
+        String departmentName
 ) {
+    public MedicineDto(String medicineId, String medicineName, String category, Integer quantity, BigDecimal price) {
+        this(medicineId, medicineName, category, quantity, price, null, null);
+    }
 }

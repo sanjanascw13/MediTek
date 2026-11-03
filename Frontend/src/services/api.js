@@ -1490,9 +1490,25 @@ export const api = {
     () => mockStore.wards,
     () => apiClient.get('/wards')
   ),
+  createWard: (payload) => requestOrMock(
+    () => {
+      const created = { wardId: 'WRD-DEMO-' + Date.now(), wardName: payload.wardName, wardType: payload.wardType, totalBeds: 0, availableBeds: 0, occupiedBeds: 0, maintenanceBeds: 0, unavailableBeds: 0, departmentId: payload.departmentId || null };
+      mockStore.wards.push(created);
+      return created;
+    },
+    () => apiClient.post('/wards', payload).then((res) => res.data)
+  ),
   getBeds: () => requestOrMock(
     () => mockStore.beds,
     () => apiClient.get('/beds')
+  ),
+  createBed: (payload) => requestOrMock(
+    () => {
+      const created = { bedId: 'BED-DEMO-' + Date.now(), wardId: payload.wardId, bedNumber: payload.bedNumber || ('B-' + Date.now().toString().slice(-4)), operationalStatus: 'AVAILABLE', availabilityStatus: 'AVAILABLE', currentAdmission: null };
+      mockStore.beds.push(created);
+      return created;
+    },
+    () => apiClient.post('/beds', payload).then((res) => res.data)
   ),
   getAvailableBeds: (wardId) => requestOrMock(
     () => getMockAvailableBeds(wardId),
@@ -1519,6 +1535,14 @@ export const api = {
   getStaffDesignationTypes: () => Promise.resolve([...STAFF_DESIGNATION_TYPES]),
 
   // Medicines
+  createMedicine: (payload) => requestOrMock(
+    () => {
+      const created = { medicineId: 'MED-DEMO-' + Date.now(), name: payload.name, medicineName: payload.name, category: payload.category || 'General', price: Number(payload.price), quantity: Number(payload.stockQuantity || 0), stock: Number(payload.stockQuantity || 0), departmentId: payload.departmentId || null };
+      mockStore.medicines.push(created);
+      return created;
+    },
+    () => apiClient.post('/medicines', payload).then((res) => mapMedicineFromApi(res.data))
+  ),
   getMedicines: (search = '') => requestOrMock(
     () => [...mockStore.medicines].filter((medicine) => (
       `${medicine.name} ${medicine.category}`.toLowerCase().includes(search.trim().toLowerCase())

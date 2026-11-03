@@ -22,6 +22,7 @@ public class PharmacyServiceImpl implements PharmacyService {
     private final PrescriptionRepository prescriptionRepository;
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final MedicineDispensationRepository dispensationRepository;
+    private final DepartmentRepository departmentRepository;
     private final BusinessIdService businessIdService;
     private final CurrentUserService currentUserService;
 
@@ -29,6 +30,7 @@ public class PharmacyServiceImpl implements PharmacyService {
                               DoctorRepository doctorRepository, PrescriptionRepository prescriptionRepository,
                               PrescriptionItemRepository prescriptionItemRepository,
                               MedicineDispensationRepository dispensationRepository,
+                              DepartmentRepository departmentRepository,
                               BusinessIdService businessIdService, CurrentUserService currentUserService) {
         this.medicineRepository = medicineRepository;
         this.patientRepository = patientRepository;
@@ -36,6 +38,7 @@ public class PharmacyServiceImpl implements PharmacyService {
         this.prescriptionRepository = prescriptionRepository;
         this.prescriptionItemRepository = prescriptionItemRepository;
         this.dispensationRepository = dispensationRepository;
+        this.departmentRepository = departmentRepository;
         this.businessIdService = businessIdService;
         this.currentUserService = currentUserService;
     }
@@ -51,6 +54,25 @@ public class PharmacyServiceImpl implements PharmacyService {
     }
 
     @Override
+    @Transactional
+    public MedicineDto createMedicine(MedicineCreateRequest request) {
+        Department department = null;
+        if (request.departmentId() != null && !request.departmentId().isBlank()) {
+            department = departmentRepository.findById(request.departmentId().trim())
+                    .orElseThrow(() -> new ResourceNotFoundException("Department not found: " + request.departmentId()));
+        }
+        Medicine medicine = new Medicine();
+        medicine.setMedicineId(businessIdService.nextId("medicine", "MED"));
+        medicine.setName(request.name().trim());
+        medicine.setCategory(request.category() != null ? request.category().trim() : null);
+        medicine.setPrice(request.price());
+        medicine.setQuantity(request.stockQuantity() != null ? request.stockQuantity() : 0);
+        medicine.setIsActive(true);
+        medicine.setDepartment(department);
+        return mapMedicine(medicineRepository.save(medicine));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<PrescriptionDto> getPrescriptions() {
         Role.RoleName role = currentUserService.role();
@@ -59,7 +81,7 @@ public class PharmacyServiceImpl implements PharmacyService {
             prescriptions = prescriptionRepository.findByPatient_PersonId(currentUserService.personId());
         } else if (role == Role.RoleName.DOCTOR) {
             prescriptions = prescriptionRepository.findByDoctor_PersonId(currentUserService.personId());
-        } else if (role == Role.RoleName.STAFF || role == Role.RoleName.SUPER_ADMIN) {
+        } else if (role == Role.RoleName.STAFF || role == Role.RoleName.SUPER_ADMIN || role == Role.RoleName.ADMIN) {
             prescriptions = prescriptionRepository.findAll();
         } else {
             throw new AccessDeniedException("This role may not view prescriptions.");
@@ -71,8 +93,8 @@ public class PharmacyServiceImpl implements PharmacyService {
     @Transactional
     public PrescriptionDto createPrescription(PrescriptionCreateRequest request) {
         Role.RoleName role = currentUserService.role();
-        if (role != Role.RoleName.DOCTOR && role != Role.RoleName.SUPER_ADMIN) {
-            throw new AccessDeniedException("Only a Doctor or Super Admin may issue a prescription.");
+        if (role != Role.RoleName.DOCTOR && role != Role.RoleName.SUPER_ADMIN && role != Role.RoleName.ADMIN) {
+            throw new AccessDeniedException("Only a Doctor or Administrator may issue a prescription.");
         }
         Patient patient = patientRepository.findByPatientId(request.patientId())
                 .filter(p -> Boolean.TRUE.equals(p.getIsActive()))
@@ -99,92 +121,109 @@ public class PharmacyServiceImpl implements PharmacyService {
         prescription.setPatient(patient);
         prescription.setDoctor(doctor);
         prescription.setNotes(request.instructions());
-        for (PrescriptionCreateRequest.Item requestItem : request.items()) {
-            Medicine medicine = medicineRepository.findById(requestItem.medicineId())
+
+        Prescription saved = prescriptionRepository.save(prescription);
+
+        for (PrescriptionCreateRequest.Item itemReq : request.items()) {
+            Medicine medicine = medicineRepository.findById(itemReq.medicineId())
                     .filter(m -> Boolean.TRUE.equals(m.getIsActive()))
-                    .orElseThrow(() -> new ResourceNotFoundException("Active medicine not found."));
+                    .orElseThrow(() -> new ResourceNotFoundException("Active medicine not found: " + itemReq.medicineId()));
+
             PrescriptionItem item = new PrescriptionItem();
             item.setItemId(businessIdService.nextId("prescription_item", "PRI"));
-            item.setPrescription(prescription);
+            item.setPrescription(saved);
             item.setMedicine(medicine);
             item.setMedicineName(medicine.getName());
-            item.setPrescribedQuantity(requestItem.prescribedQuantity());
-            item.setDosage(requestItem.dosage().trim());
-            item.setFrequency(requestItem.frequency().trim());
-            item.setDurationDays(requestItem.durationDays());
+            item.setPrescribedQuantity(itemReq.prescribedQuantity());
             item.setQuantityDispensed(0);
-            prescription.getItems().add(item);
+            item.setDosage(itemReq.dosage());
+            item.setFrequency(itemReq.frequency());
+            item.setDurationDays(itemReq.durationDays());
+
+            prescriptionItemRepository.save(item);
+            saved.getItems().add(item);
         }
-        return mapPrescription(prescriptionRepository.save(prescription));
+
+        return mapPrescription(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<DispensationDto> getDispensations() {
         Role.RoleName role = currentUserService.role();
-        List<MedicineDispensation> dispensations = dispensationRepository.findAllByOrderByDispensedAtDesc();
         if (role == Role.RoleName.PATIENT) {
-            String personId = currentUserService.personId();
-            dispensations = dispensations.stream()
-                    .filter(record -> record.getPatient().getPersonId().equals(personId)).toList();
-        } else if (role == Role.RoleName.DOCTOR) {
-            String personId = currentUserService.personId();
-            dispensations = dispensations.stream()
-                    .filter(record -> record.getPrescription().getDoctor().getPersonId().equals(personId)).toList();
-        } else if (role != Role.RoleName.STAFF && role != Role.RoleName.SUPER_ADMIN) {
-            throw new AccessDeniedException("This role may not view dispensing history.");
+            return dispensationRepository.findByPatient_PersonIdOrderByDispensedAtDesc(currentUserService.personId())
+                    .stream().map(this::mapDispensation).toList();
+        } else if (role == Role.RoleName.STAFF || role == Role.RoleName.SUPER_ADMIN || role == Role.RoleName.ADMIN || role == Role.RoleName.DOCTOR) {
+            return dispensationRepository.findAllByOrderByDispensedAtDesc()
+                    .stream().map(this::mapDispensation).toList();
         }
-        return dispensations.stream().map(this::mapDispensation).toList();
+        throw new AccessDeniedException("This role may not view dispensations.");
     }
 
     @Override
     @Transactional
     public DispensationDto dispense(String prescriptionId, DispenseRequest request) {
         Role.RoleName role = currentUserService.role();
-        if (role != Role.RoleName.STAFF && role != Role.RoleName.SUPER_ADMIN) {
-            throw new AccessDeniedException("Only Pharmacy Staff or a Super Admin may dispense medicine.");
+        if (role != Role.RoleName.STAFF && role != Role.RoleName.SUPER_ADMIN && role != Role.RoleName.ADMIN) {
+            throw new AccessDeniedException("Only staff may record medicine dispensations.");
         }
-        PrescriptionItem item = prescriptionItemRepository.findByIdForUpdate(request.prescriptionItemId())
-                .orElseThrow(() -> new ResourceNotFoundException("Prescription item not found."));
-        Prescription prescription = item.getPrescription();
-        if (!prescription.getPrescriptionId().equals(prescriptionId)) {
-            throw new IllegalArgumentException("Prescription item does not belong to the requested prescription.");
+
+        Prescription prescription = prescriptionRepository.findById(prescriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prescription not found: " + prescriptionId));
+
+        PrescriptionItem item = prescriptionItemRepository.findById(request.prescriptionItemId())
+                .orElseThrow(() -> new ResourceNotFoundException("Prescription line item not found: " + request.prescriptionItemId()));
+
+        if (!item.getPrescription().getPrescriptionId().equals(prescription.getPrescriptionId())) {
+            throw new IllegalArgumentException("Prescription line item does not belong to this prescription.");
         }
-        if (!Boolean.TRUE.equals(prescription.getPatient().getIsActive())) {
-            throw new IllegalStateException("Medicine may not be dispensed to an inactive patient.");
+
+        int quantity = request.quantity();
+        int remaining = item.getPrescribedQuantity() - item.getQuantityDispensed();
+        if (quantity <= 0 || quantity > remaining) {
+            throw new IllegalArgumentException("Invalid dispensation quantity. Remaining: " + remaining);
         }
 
         Medicine medicine = medicineRepository.findByIdForUpdate(item.getMedicine().getMedicineId())
                 .orElseThrow(() -> new ResourceNotFoundException("Medicine not found."));
-        if (!Boolean.TRUE.equals(medicine.getIsActive())) {
-            throw new IllegalStateException("Inactive medicine may not be dispensed.");
-        }
-        int quantity = request.quantity();
-        int remaining = item.getPrescribedQuantity() - item.getQuantityDispensed();
-        if (quantity > remaining) {
-            throw new IllegalStateException("Dispensed quantity exceeds the remaining prescribed quantity.");
-        }
-        if (quantity > medicine.getQuantity()) {
-            throw new IllegalStateException("Dispensed quantity exceeds available medicine stock.");
+
+        if (medicine.getQuantity() < quantity) {
+            throw new IllegalStateException("Insufficient inventory. In stock: " + medicine.getQuantity());
         }
 
         medicine.setQuantity(medicine.getQuantity() - quantity);
+        medicineRepository.save(medicine);
+
         item.setQuantityDispensed(item.getQuantityDispensed() + quantity);
+        prescriptionItemRepository.save(item);
+
+        UserAccount dispensedBy = currentUserService.account();
+
         MedicineDispensation dispensation = new MedicineDispensation();
         dispensation.setDispensationId(businessIdService.nextId("dispensation", "DSP"));
         dispensation.setPrescription(prescription);
         dispensation.setPrescriptionItem(item);
         dispensation.setMedicine(medicine);
         dispensation.setPatient(prescription.getPatient());
-        dispensation.setDispensedBy(currentUserService.account());
+        dispensation.setDispensedBy(dispensedBy);
         dispensation.setQuantity(quantity);
         dispensation.setUnitPrice(medicine.getPrice());
         return mapDispensation(dispensationRepository.save(dispensation));
     }
 
     private MedicineDto mapMedicine(Medicine medicine) {
-        return new MedicineDto(medicine.getMedicineId(), medicine.getName(), medicine.getCategory(),
-                medicine.getQuantity(), medicine.getPrice());
+        String departmentId = medicine.getDepartment() != null ? medicine.getDepartment().getDepartmentId() : null;
+        String departmentName = medicine.getDepartment() != null ? medicine.getDepartment().getDepartmentName() : null;
+        return new MedicineDto(
+                medicine.getMedicineId(),
+                medicine.getName(),
+                medicine.getCategory(),
+                medicine.getQuantity(),
+                medicine.getPrice(),
+                departmentId,
+                departmentName
+        );
     }
 
     private PrescriptionDto mapPrescription(Prescription prescription) {

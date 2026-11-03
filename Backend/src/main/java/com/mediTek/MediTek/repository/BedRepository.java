@@ -19,4 +19,8 @@ public interface BedRepository extends JpaRepository<Bed, String> {
     java.util.Optional<Bed> findByIdForUpdate(@Param("bedId") String bedId);
 
     long countByOperationalStatus(Bed.BedOperationalStatus status);
+
+    long countByWard_WardId(String wardId);
+
+    boolean existsByWard_WardIdAndBedNumber(String wardId, String bedNumber);
 }

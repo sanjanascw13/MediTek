@@ -23,5 +23,9 @@ public class Ward {
 
     @Column(name = "ward_type", length = 64, nullable = false)
     private String wardType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
 }
 

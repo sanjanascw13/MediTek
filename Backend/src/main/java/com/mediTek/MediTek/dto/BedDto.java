@@ -9,6 +9,11 @@ public record BedDto(
         String bedNumber,
         String availabilityStatus,
         Bed.BedOperationalStatus operationalStatus,
-        String currentPatientName
+        String currentPatientName,
+        String departmentId,
+        String departmentName
 ) {
+    public BedDto(String bedId, String wardId, String wardName, String bedNumber, String availabilityStatus, Bed.BedOperationalStatus operationalStatus, String currentPatientName) {
+        this(bedId, wardId, wardName, bedNumber, availabilityStatus, operationalStatus, currentPatientName, null, null);
+    }
 }
