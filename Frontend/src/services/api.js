@@ -690,6 +690,7 @@ export const api = {
       username: response.username,
       name: response.name || response.username,
       role: response.role,
+      designation: response.designation || (response.username === 'meditek_pharma' ? 'Pharmacist' : null),
       personId: response.personId,
       mustChangePassword: response.passwordChangeRequired,
     };
@@ -737,7 +738,15 @@ export const api = {
   isMockMode: () => USE_MOCKS,
 
   getCurrentRole: () => {
-    return normalizeRole(api.getCurrentUser()?.role);
+    const user = api.getCurrentUser();
+    return normalizeRole(user?.role, user);
+  },
+
+  getCurrentDesignation: () => {
+    const user = api.getCurrentUser();
+    if (user?.designation) return user.designation;
+    if (user?.username === 'meditek_pharma') return 'Pharmacist';
+    return null;
   },
 
   getApiBaseUrl: () => API_BASE_URL,

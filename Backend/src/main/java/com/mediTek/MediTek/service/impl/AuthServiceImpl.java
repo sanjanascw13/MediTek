@@ -6,6 +6,7 @@ import com.mediTek.MediTek.dto.AuthResponse;
 import com.mediTek.MediTek.dto.PatientDto;
 import com.mediTek.MediTek.dto.PatientRegistrationRequest;
 import com.mediTek.MediTek.dto.PasswordChangeRequest;
+import com.mediTek.MediTek.repository.MedicalStaffRepository;
 import com.mediTek.MediTek.repository.UserAccountRepository;
 import com.mediTek.MediTek.security.JwtUtil;
 import com.mediTek.MediTek.service.AuthService;
@@ -24,15 +25,18 @@ public class AuthServiceImpl implements AuthService {
     private final PatientService patientService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final MedicalStaffRepository medicalStaffRepository;
 
     public AuthServiceImpl(UserAccountRepository userAccountRepository,
                            PatientService patientService,
                            PasswordEncoder passwordEncoder,
-                           JwtUtil jwtUtil) {
+                           JwtUtil jwtUtil,
+                           MedicalStaffRepository medicalStaffRepository) {
         this.userAccountRepository = userAccountRepository;
         this.patientService = patientService;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.medicalStaffRepository = medicalStaffRepository;
     }
 
     @Override
@@ -52,9 +56,17 @@ public class AuthServiceImpl implements AuthService {
         if (role.equals("ADMIN")) role = "SUPER_ADMIN";
         String token = jwtUtil.generateToken(account.getUsername(), role);
 
+        String designation = null;
+        if (account.getPerson() != null) {
+            designation = medicalStaffRepository.findById(account.getPerson().getPersonId())
+                    .map(MedicalStaff::getRole)
+                    .orElse(null);
+        }
+
         return createResponse(token, account.getUsername(), role,
                 account.getPerson() == null ? null : account.getPerson().getPersonId(),
                 account.getPerson() == null ? account.getUsername() : account.getPerson().getName(),
+                designation,
                 Boolean.TRUE.equals(account.getPasswordChangeRequired()));
     }
 
@@ -66,7 +78,7 @@ public class AuthServiceImpl implements AuthService {
         String role = "PATIENT";
         String token = jwtUtil.generateToken(request.getUsername().trim(), role);
         return createResponse(token, request.getUsername().trim(), role,
-                patient.getPersonId(), patient.getName(), false);
+                patient.getPersonId(), patient.getName(), null, false);
     }
 
     @Override
@@ -86,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private AuthResponse createResponse(String token, String username, String role, String personId,
-                                        String name, boolean passwordChangeRequired) {
+                                        String name, String designation, boolean passwordChangeRequired) {
         return AuthResponse.builder()
                 .token(token)
                 .tokenType("Bearer")
@@ -95,6 +107,7 @@ public class AuthServiceImpl implements AuthService {
                 .role(role)
                 .personId(personId)
                 .name(name)
+                .designation(designation)
                 .passwordChangeRequired(passwordChangeRequired)
                 .build();
     }

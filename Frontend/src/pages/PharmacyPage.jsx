@@ -66,7 +66,7 @@ export default function PharmacyPage() {
 
   const role = api.getCurrentRole();
   const canPrescribe = ['DOCTOR', 'SUPER_ADMIN', 'ADMIN'].includes(role);
-  const canDispense = ['STAFF', 'SUPER_ADMIN', 'ADMIN'].includes(role);
+  const canDispense = ['STAFF', 'SUPER_ADMIN', 'ADMIN', 'PHARMACIST'].includes(role);
   const canAddMedicine = ['SUPER_ADMIN', 'ADMIN'].includes(role);
 
   const loadData = useCallback(async (query = '') => {
@@ -579,6 +579,10 @@ export default function PharmacyPage() {
               />
             </label>
 
+            <p className="text-[11px] text-gray-500 bg-lime-50/70 p-2.5 rounded-xl border border-lime-200">
+              💡 Dispensing records inventory deduction and automatically sends the invoice to the Billing Officer.
+            </p>
+
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
@@ -592,7 +596,7 @@ export default function PharmacyPage() {
                 disabled={saving || (!api.isMockMode() && !selectedPrescriptionItem)}
                 className="rounded-xl bg-[#a3e635] px-5 py-2.5 text-xs font-bold text-black hover:bg-[#8ddb16] disabled:opacity-50"
               >
-                {saving ? 'Recording…' : 'Confirm Dispense'}
+                {saving ? 'Recording…' : 'Dispense & Dispatch Bill'}
               </button>
             </div>
           </form>

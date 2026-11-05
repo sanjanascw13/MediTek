@@ -6,6 +6,7 @@ import java.util.List;
 public record PrescriptionDto(
         String prescriptionId,
         String patientId,
+        String patientName,
         String doctorId,
         String doctorName,
         Instant prescriptionDate,

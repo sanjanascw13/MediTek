@@ -166,7 +166,11 @@ export default function Sidebar() {
                 {currentUser?.name || currentUser?.username || 'Clinical User'}
               </p>
               <p className="text-xs text-lime-400 font-medium mt-1">
-                {currentUser?.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : role || currentUser?.role || 'User'}
+                {role === 'PHARMACIST'
+                  ? 'Pharmacist'
+                  : currentUser?.role === 'SUPER_ADMIN'
+                  ? 'SUPER_ADMIN'
+                  : role || currentUser?.role || 'User'}
               </p>
             </div>
           </div>

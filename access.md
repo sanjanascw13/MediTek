@@ -70,3 +70,4 @@ This document provides system access credentials for hospital staff and administ
 - All accounts are authenticated against the live MediTek Spring Boot API (`POST /api/auth/login`) with BCrypt salted password verification.
 - User sessions are issued stateless JWT Bearer tokens valid for 24 hours.
 - Passwords can be changed anytime via the `/change-password` portal route.
+

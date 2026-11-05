@@ -17,5 +17,6 @@ public class AuthResponse {
     private String role;
     private String personId;
     private String name;
+    private String designation;
     private boolean passwordChangeRequired;
 }

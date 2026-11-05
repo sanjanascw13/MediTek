@@ -5,16 +5,23 @@ import com.mediTek.MediTek.dto.*;
 import com.mediTek.MediTek.exception.ResourceNotFoundException;
 import com.mediTek.MediTek.repository.*;
 import com.mediTek.MediTek.security.CurrentUserService;
+import com.mediTek.MediTek.service.BillingService;
 import com.mediTek.MediTek.service.BusinessIdService;
 import com.mediTek.MediTek.service.PharmacyService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class PharmacyServiceImpl implements PharmacyService {
+
+    private static final Logger log = LoggerFactory.getLogger(PharmacyServiceImpl.class);
 
     private final MedicineRepository medicineRepository;
     private final PatientRepository patientRepository;
@@ -25,13 +32,16 @@ public class PharmacyServiceImpl implements PharmacyService {
     private final DepartmentRepository departmentRepository;
     private final BusinessIdService businessIdService;
     private final CurrentUserService currentUserService;
+    private final BillRepository billRepository;
+    private final BillingService billingService;
 
     public PharmacyServiceImpl(MedicineRepository medicineRepository, PatientRepository patientRepository,
                               DoctorRepository doctorRepository, PrescriptionRepository prescriptionRepository,
                               PrescriptionItemRepository prescriptionItemRepository,
                               MedicineDispensationRepository dispensationRepository,
                               DepartmentRepository departmentRepository,
-                              BusinessIdService businessIdService, CurrentUserService currentUserService) {
+                              BusinessIdService businessIdService, CurrentUserService currentUserService,
+                              BillRepository billRepository, BillingService billingService) {
         this.medicineRepository = medicineRepository;
         this.patientRepository = patientRepository;
         this.doctorRepository = doctorRepository;
@@ -41,6 +51,8 @@ public class PharmacyServiceImpl implements PharmacyService {
         this.departmentRepository = departmentRepository;
         this.businessIdService = businessIdService;
         this.currentUserService = currentUserService;
+        this.billRepository = billRepository;
+        this.billingService = billingService;
     }
 
     @Override
@@ -209,7 +221,36 @@ public class PharmacyServiceImpl implements PharmacyService {
         dispensation.setDispensedBy(dispensedBy);
         dispensation.setQuantity(quantity);
         dispensation.setUnitPrice(medicine.getPrice());
-        return mapDispensation(dispensationRepository.save(dispensation));
+        MedicineDispensation savedDispensation = dispensationRepository.save(dispensation);
+
+        // Automatically dispatch medication bill line item to the Billing Officer
+        try {
+            String itemDesc = "Prescription " + prescription.getPrescriptionId() + ": " + medicine.getName() + " (" + medicine.getCategory() + ")";
+            BillLineItemRequest itemReq = new BillLineItemRequest(itemDesc, quantity, medicine.getPrice());
+            List<Bill> patientBills = billRepository.findByPatient_PersonId(prescription.getPatient().getPersonId());
+            Optional<Bill> pendingBillOpt = patientBills.stream()
+                    .filter(b -> b.getStatus() == Bill.BillStatus.PENDING)
+                    .findFirst();
+
+            if (pendingBillOpt.isPresent()) {
+                billingService.addLineItem(pendingBillOpt.get().getBillId(), itemReq);
+                log.info("Appended medication dispensation {} to pending bill {}", savedDispensation.getDispensationId(), pendingBillOpt.get().getBillId());
+            } else {
+                BillCreateRequest createReq = new BillCreateRequest(
+                        prescription.getPatient().getPatientId(),
+                        null,
+                        BigDecimal.ZERO,
+                        List.of(itemReq)
+                );
+                BillDto createdBill = billingService.createBill(createReq);
+                log.info("Created new pharmacy bill {} for patient {}", createdBill.billId(), prescription.getPatient().getPatientId());
+            }
+        } catch (Exception billingEx) {
+            log.warn("Could not automatically create/attach bill for dispensation {}: {}",
+                    savedDispensation.getDispensationId(), billingEx.getMessage());
+        }
+
+        return mapDispensation(savedDispensation);
     }
 
     private MedicineDto mapMedicine(Medicine medicine) {
@@ -242,6 +283,7 @@ public class PharmacyServiceImpl implements PharmacyService {
         return new PrescriptionDto(
                 prescription.getPrescriptionId(),
                 prescription.getPatient().getPatientId(),
+                prescription.getPatient().getName(),
                 prescription.getDoctor().getDoctorId(),
                 prescription.getDoctor().getName(),
                 prescription.getIssuedAt(),

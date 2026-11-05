@@ -47,6 +47,11 @@ export const rolePaths = {
     '/medical-records',
     '/messages',
   ],
+  PHARMACIST: [
+    '/',
+    '/change-password',
+    '/pharmacy',
+  ],
   STAFF: [
     '/',
     '/change-password',
@@ -74,12 +79,22 @@ export const rolePaths = {
   ],
 };
 
-export function normalizeRole(role) {
+export function normalizeRole(role, user = null) {
   const normalized = String(role || '').replace(/^ROLE_/i, '').toUpperCase();
+  const designation = String(user?.designation || '').toLowerCase();
+  const username = String(user?.username || '').toLowerCase();
+
+  if (normalized === 'STAFF') {
+    if (designation === 'pharmacist' || username === 'meditek_pharma') {
+      return 'PHARMACIST';
+    }
+  }
+
   return normalized === 'SUPER_ADMIN' ? 'ADMIN' : normalized;
 }
 
-export function canAccessPath(role, path) {
-  const allowedPaths = rolePaths[normalizeRole(role)] || ['/'];
+export function canAccessPath(role, path, user = null) {
+  const roleKey = normalizeRole(role, user);
+  const allowedPaths = rolePaths[roleKey] || ['/'];
   return allowedPaths.includes(path);
 }
