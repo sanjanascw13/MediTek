@@ -15,3 +15,4 @@ public record MedicineCreateRequest(
         String departmentId
 ) {
 }
+

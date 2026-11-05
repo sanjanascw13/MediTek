@@ -679,6 +679,29 @@ export const api = {
     return { ...response, user };
   },
 
+  registerPatient: async (registrationData) => {
+    let response;
+    if (USE_MOCKS) {
+      throw new Error('Patient self-registration requires live backend connectivity.');
+    } else {
+      response = (await apiClient.post('/auth/register', registrationData)).data;
+    }
+    const user = response.user || {
+      username: response.username,
+      name: response.name || response.username,
+      role: response.role,
+      personId: response.personId,
+      mustChangePassword: response.passwordChangeRequired,
+    };
+    if (!response.token || !user.username) {
+      throw new Error('Registration succeeded but session could not be established.');
+    }
+    localStorage.setItem('meditek_token', response.token);
+    localStorage.setItem('meditek_user', JSON.stringify(user));
+    localStorage.setItem(AUTH_MODE_KEY, 'live');
+    return { ...response, user };
+  },
+
   getCurrentUser: () => {
     const userStr = localStorage.getItem('meditek_user');
     if (userStr) {

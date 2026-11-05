@@ -9,6 +9,7 @@ import com.mediTek.MediTek.repository.DepartmentRepository;
 import com.mediTek.MediTek.repository.MedicalStaffRepository;
 import com.mediTek.MediTek.service.AccountProvisioningService;
 import com.mediTek.MediTek.service.BusinessIdService;
+import com.mediTek.MediTek.service.DoctorNotificationService;
 import com.mediTek.MediTek.service.StaffService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +24,18 @@ public class StaffServiceImpl implements StaffService {
     private final DepartmentRepository departmentRepository;
     private final BusinessIdService businessIdService;
     private final AccountProvisioningService accountProvisioningService;
+    private final DoctorNotificationService doctorNotificationService;
 
     public StaffServiceImpl(MedicalStaffRepository staffRepository,
                             DepartmentRepository departmentRepository,
                             BusinessIdService businessIdService,
-                            AccountProvisioningService accountProvisioningService) {
+                            AccountProvisioningService accountProvisioningService,
+                            DoctorNotificationService doctorNotificationService) {
         this.staffRepository = staffRepository;
         this.departmentRepository = departmentRepository;
         this.businessIdService = businessIdService;
         this.accountProvisioningService = accountProvisioningService;
+        this.doctorNotificationService = doctorNotificationService;
     }
 
     @Override
@@ -55,6 +59,7 @@ public class StaffServiceImpl implements StaffService {
         MedicalStaff saved = staffRepository.save(staff);
         AccountProvisioningService.InitialCredentials credentials = accountProvisioningService
                 .provision(saved, saved.getStaffId(), Role.RoleName.STAFF);
+        doctorNotificationService.sendStaffAccountCreatedNotification(saved, credentials.username(), credentials.temporaryPassword());
         StaffDto response = mapToDto(saved);
         response.setUsername(credentials.username());
         response.setTemporaryPassword(credentials.temporaryPassword());

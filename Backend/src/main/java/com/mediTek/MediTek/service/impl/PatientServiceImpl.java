@@ -13,6 +13,7 @@ import com.mediTek.MediTek.repository.UserAccountRepository;
 import com.mediTek.MediTek.repository.AppointmentRepository;
 import com.mediTek.MediTek.security.CurrentUserService;
 import com.mediTek.MediTek.service.BusinessIdService;
+import com.mediTek.MediTek.service.DoctorNotificationService;
 import com.mediTek.MediTek.service.PatientService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.access.AccessDeniedException;
@@ -36,6 +37,7 @@ public class PatientServiceImpl implements PatientService {
     private final BusinessIdService businessIdService;
     private final CurrentUserService currentUserService;
     private final AppointmentRepository appointmentRepository;
+    private final DoctorNotificationService doctorNotificationService;
 
     public PatientServiceImpl(PatientRepository patientRepository,
                               UserAccountRepository userAccountRepository,
@@ -43,7 +45,8 @@ public class PatientServiceImpl implements PatientService {
                               PasswordEncoder passwordEncoder,
                               BusinessIdService businessIdService,
                               CurrentUserService currentUserService,
-                              AppointmentRepository appointmentRepository) {
+                              AppointmentRepository appointmentRepository,
+                              DoctorNotificationService doctorNotificationService) {
         this.patientRepository = patientRepository;
         this.userAccountRepository = userAccountRepository;
         this.roleRepository = roleRepository;
@@ -51,6 +54,7 @@ public class PatientServiceImpl implements PatientService {
         this.businessIdService = businessIdService;
         this.currentUserService = currentUserService;
         this.appointmentRepository = appointmentRepository;
+        this.doctorNotificationService = doctorNotificationService;
     }
 
     @Override
@@ -67,6 +71,7 @@ public class PatientServiceImpl implements PatientService {
                 dto.getBloodGroup(), dto.getAddress(), dto.getEmergencyContact(), patientId
         );
         createAccount(patient, username, temporaryPassword, true);
+        doctorNotificationService.sendPatientAccountCreatedNotification(patient, username, temporaryPassword, false);
         return new PatientRegistrationResponse(mapToDto(patient), username, temporaryPassword);
     }
 
@@ -79,6 +84,7 @@ public class PatientServiceImpl implements PatientService {
                 businessIdService.nextId("patient", "PAT")
         );
         createAccount(patient, request.getUsername().trim(), request.getPassword(), false);
+        doctorNotificationService.sendPatientAccountCreatedNotification(patient, request.getUsername().trim(), null, true);
         return mapToDto(patient);
     }
 

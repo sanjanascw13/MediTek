@@ -2,6 +2,8 @@ package com.mediTek.MediTek.service.impl;
 
 import com.mediTek.MediTek.domain.Doctor;
 import com.mediTek.MediTek.domain.DoctorActivationToken;
+import com.mediTek.MediTek.domain.MedicalStaff;
+import com.mediTek.MediTek.domain.Patient;
 import com.mediTek.MediTek.domain.UserAccount;
 import com.mediTek.MediTek.dto.DoctorActivationDetailsDto;
 import com.mediTek.MediTek.dto.EmailNotificationResult;
@@ -148,6 +150,134 @@ public class DoctorNotificationServiceImpl implements DoctorNotificationService 
                     true,
                     recipientEmail,
                     "Account was created, but email notification failed: " + ex.getMessage()
+            );
+        }
+    }
+
+    @Override
+    public EmailNotificationResult sendStaffAccountCreatedNotification(MedicalStaff staff, String username, String temporaryPassword) {
+        String recipientEmail = staff.getEmail();
+        if (recipientEmail == null || recipientEmail.isBlank()) {
+            return new EmailNotificationResult(false, isSmtpConfigured(), "", "Staff record has no email address.");
+        }
+
+        if (!isSmtpConfigured()) {
+            log.info("SMTP is not configured in the active environment. Notification not dispatched for Staff {} to {}.",
+                    staff.getStaffId(), recipientEmail);
+            return new EmailNotificationResult(
+                    false,
+                    false,
+                    recipientEmail,
+                    "Staff account created successfully. SMTP is not configured in this environment; credentials notification was not dispatched to " + recipientEmail + "."
+            );
+        }
+
+        try {
+            JavaMailSender mailSender = getMailSender();
+            SimpleMailMessage mailMessage = new SimpleMailMessage();
+            mailMessage.setFrom(mailFrom);
+            mailMessage.setTo(recipientEmail);
+            mailMessage.setSubject("Welcome to MediTek - Your Staff Account Credentials");
+            mailMessage.setText(
+                    "Dear " + staff.getName() + ",\n\n" +
+                    "A MediTek hospital staff account has been provisioned for you by the System Administrator.\n\n" +
+                    "Designation / Role: " + staff.getRole() + "\n" +
+                    "Staff ID: " + staff.getStaffId() + "\n" +
+                    "Username: " + username + "\n" +
+                    "Temporary Password: " + temporaryPassword + "\n\n" +
+                    "To sign in to the MediTek Clinical Portal, please visit:\n" +
+                    frontendBaseUrl.replaceAll("/+$", "") + "/login\n\n" +
+                    "You will be required to change your password upon your first sign in.\n\n" +
+                    "If you did not expect this account, please contact the MediTek Hospital Administration immediately.\n\n" +
+                    "Regards,\n" +
+                    "MediTek Hospital Administration Team"
+            );
+            mailSender.send(mailMessage);
+            log.info("Successfully dispatched staff account credentials email to {}", recipientEmail);
+            return new EmailNotificationResult(
+                    true,
+                    true,
+                    recipientEmail,
+                    "Staff account credentials sent successfully to " + recipientEmail + "."
+            );
+        } catch (Exception ex) {
+            log.warn("Failed to dispatch staff credentials email to {}: {}", recipientEmail, ex.getMessage());
+            return new EmailNotificationResult(
+                    false,
+                    true,
+                    recipientEmail,
+                    "Staff account was created, but email notification failed: " + ex.getMessage()
+            );
+        }
+    }
+
+    @Override
+    public EmailNotificationResult sendPatientAccountCreatedNotification(Patient patient, String username, String temporaryPassword, boolean isSelfRegistered) {
+        String recipientEmail = patient.getEmail();
+        if (recipientEmail == null || recipientEmail.isBlank()) {
+            return new EmailNotificationResult(false, isSmtpConfigured(), "", "Patient record has no email address.");
+        }
+
+        if (!isSmtpConfigured()) {
+            log.info("SMTP is not configured in the active environment. Notification not dispatched for Patient {} to {}.",
+                    patient.getPatientId(), recipientEmail);
+            return new EmailNotificationResult(
+                    false,
+                    false,
+                    recipientEmail,
+                    "Patient account created successfully. SMTP is not configured in this environment; notification was not dispatched to " + recipientEmail + "."
+            );
+        }
+
+        try {
+            JavaMailSender mailSender = getMailSender();
+            SimpleMailMessage mailMessage = new SimpleMailMessage();
+            mailMessage.setFrom(mailFrom);
+            mailMessage.setTo(recipientEmail);
+
+            if (isSelfRegistered) {
+                mailMessage.setSubject("Welcome to MediTek - Registration Successful");
+                mailMessage.setText(
+                        "Dear " + patient.getName() + ",\n\n" +
+                        "Your patient account at MediTek Hospital has been registered successfully.\n\n" +
+                        "Patient ID: " + patient.getPatientId() + "\n" +
+                        "Username: " + username + "\n\n" +
+                        "You can sign in to your personal patient health portal anytime at:\n" +
+                        frontendBaseUrl.replaceAll("/+$", "") + "/login\n\n" +
+                        "Regards,\n" +
+                        "MediTek Hospital Administration Team"
+                );
+            } else {
+                mailMessage.setSubject("Welcome to MediTek - Your Patient Portal Account");
+                mailMessage.setText(
+                        "Dear " + patient.getName() + ",\n\n" +
+                        "A patient portal account at MediTek Hospital has been created for you.\n\n" +
+                        "Patient ID: " + patient.getPatientId() + "\n" +
+                        "Username: " + username + "\n" +
+                        "Temporary Password: " + temporaryPassword + "\n\n" +
+                        "Please sign in to the MediTek Patient Portal at:\n" +
+                        frontendBaseUrl.replaceAll("/+$", "") + "/login\n\n" +
+                        "You will be required to change your password upon your first sign in.\n\n" +
+                        "Regards,\n" +
+                        "MediTek Hospital Administration Team"
+                );
+            }
+
+            mailSender.send(mailMessage);
+            log.info("Successfully dispatched patient registration email to {}", recipientEmail);
+            return new EmailNotificationResult(
+                    true,
+                    true,
+                    recipientEmail,
+                    "Patient notification sent successfully to " + recipientEmail + "."
+            );
+        } catch (Exception ex) {
+            log.warn("Failed to dispatch patient registration email to {}: {}", recipientEmail, ex.getMessage());
+            return new EmailNotificationResult(
+                    false,
+                    true,
+                    recipientEmail,
+                    "Patient account was created, but email notification failed: " + ex.getMessage()
             );
         }
     }

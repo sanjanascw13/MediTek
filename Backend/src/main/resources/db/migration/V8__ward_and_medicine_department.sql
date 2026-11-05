@@ -19,3 +19,4 @@ ALTER TABLE medicines
 UPDATE medicines
 SET department_id = 'DEP-000005'
 WHERE department_id IS NULL AND EXISTS (SELECT 1 FROM departments WHERE department_id = 'DEP-000005');
+
