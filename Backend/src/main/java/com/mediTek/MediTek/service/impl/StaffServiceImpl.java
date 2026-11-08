@@ -7,10 +7,13 @@ import com.mediTek.MediTek.dto.StaffDto;
 import com.mediTek.MediTek.exception.ResourceNotFoundException;
 import com.mediTek.MediTek.repository.DepartmentRepository;
 import com.mediTek.MediTek.repository.MedicalStaffRepository;
+import com.mediTek.MediTek.repository.UserAccountRepository;
 import com.mediTek.MediTek.service.AccountProvisioningService;
 import com.mediTek.MediTek.service.BusinessIdService;
 import com.mediTek.MediTek.service.DoctorNotificationService;
 import com.mediTek.MediTek.service.StaffService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,22 +23,27 @@ import java.util.stream.Collectors;
 @Service
 public class StaffServiceImpl implements StaffService {
 
+    private static final Logger log = LoggerFactory.getLogger(StaffServiceImpl.class);
+
     private final MedicalStaffRepository staffRepository;
     private final DepartmentRepository departmentRepository;
     private final BusinessIdService businessIdService;
     private final AccountProvisioningService accountProvisioningService;
     private final DoctorNotificationService doctorNotificationService;
+    private final UserAccountRepository userAccountRepository;
 
     public StaffServiceImpl(MedicalStaffRepository staffRepository,
                             DepartmentRepository departmentRepository,
                             BusinessIdService businessIdService,
                             AccountProvisioningService accountProvisioningService,
-                            DoctorNotificationService doctorNotificationService) {
+                            DoctorNotificationService doctorNotificationService,
+                            UserAccountRepository userAccountRepository) {
         this.staffRepository = staffRepository;
         this.departmentRepository = departmentRepository;
         this.businessIdService = businessIdService;
         this.accountProvisioningService = accountProvisioningService;
         this.doctorNotificationService = doctorNotificationService;
+        this.userAccountRepository = userAccountRepository;
     }
 
     @Override
@@ -99,9 +107,17 @@ public class StaffServiceImpl implements StaffService {
         MedicalStaff staff = staffRepository.findById(id)
                 .or(() -> staffRepository.findByStaffId(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Staff member not found: " + id));
-        staff.setIsActive(false);
-        staffRepository.save(staff);
-        accountProvisioningService.setEnabled(staff.getPersonId(), false);
+
+        try {
+            userAccountRepository.findByPerson_PersonId(staff.getPersonId()).ifPresent(userAccountRepository::delete);
+            staffRepository.delete(staff);
+            log.info("Physically deleted staff {}", id);
+        } catch (Exception ex) {
+            log.warn("Cannot physically delete staff {} due to linked entities ({}). Soft-deleting instead.", id, ex.getMessage());
+            staff.setIsActive(false);
+            staffRepository.save(staff);
+            accountProvisioningService.setEnabled(staff.getPersonId(), false);
+        }
     }
 
     private StaffDto mapToDto(MedicalStaff staff) {

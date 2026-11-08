@@ -173,12 +173,18 @@ public class PatientServiceImpl implements PatientService {
         Patient patient = patientRepository.findById(id)
                 .or(() -> patientRepository.findByPatientId(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Patient not found: " + id));
-        patient.setIsActive(false);
-        patientRepository.save(patient);
-        userAccountRepository.findByPerson_PersonId(patient.getPersonId()).ifPresent(account -> {
-            account.setEnabled(false);
-            userAccountRepository.save(account);
-        });
+
+        try {
+            userAccountRepository.findByPerson_PersonId(patient.getPersonId()).ifPresent(userAccountRepository::delete);
+            patientRepository.delete(patient);
+        } catch (Exception ex) {
+            patient.setIsActive(false);
+            patientRepository.save(patient);
+            userAccountRepository.findByPerson_PersonId(patient.getPersonId()).ifPresent(account -> {
+                account.setEnabled(false);
+                userAccountRepository.save(account);
+            });
+        }
     }
 
     private void enforcePatientReadAccess(Patient patient) {

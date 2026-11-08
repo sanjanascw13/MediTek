@@ -68,6 +68,14 @@ export default function DashboardPage() {
   const [inspectUser, setInspectUser] = useState(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const [deletedIds, setDeletedIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem('meditek_deleted_account_ids');
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
 
   // New User Form State
   const [addForm, setAddForm] = useState({
@@ -195,8 +203,8 @@ export default function DashboardPage() {
       });
     });
 
-    return list;
-  }, [doctors, staff, patients]);
+    return list.filter((acc) => !deletedIds.has(acc.id) && !deletedIds.has(acc.personId));
+  }, [doctors, staff, patients, deletedIds]);
 
   // Filter accounts
   const filteredAccounts = useMemo(() => {
@@ -296,18 +304,32 @@ export default function DashboardPage() {
   // Delete user account
   const handleConfirmDelete = async () => {
     if (!deleteConfirmUser) return;
+    const target = deleteConfirmUser;
     setActionInProgress(true);
     setError('');
     setSuccess('');
     try {
-      if (deleteConfirmUser.type === 'DOCTOR') {
-        await api.deleteDoctor(deleteConfirmUser.id);
-      } else if (deleteConfirmUser.type === 'PATIENT') {
-        await api.deletePatient(deleteConfirmUser.id);
+      if (target.type === 'DOCTOR') {
+        await api.deleteDoctor(target.id);
+      } else if (target.type === 'PATIENT') {
+        await api.deletePatient(target.id);
       } else {
-        await api.deleteStaff(deleteConfirmUser.id);
+        await api.deleteStaff(target.id);
       }
-      setSuccess(`Account ${deleteConfirmUser.id} (${deleteConfirmUser.name}) successfully removed.`);
+
+      setDeletedIds((prev) => {
+        const next = new Set(prev);
+        if (target.id) next.add(target.id);
+        if (target.personId) next.add(target.personId);
+        try {
+          localStorage.setItem('meditek_deleted_account_ids', JSON.stringify(Array.from(next)));
+        } catch (e) {
+          console.error(e);
+        }
+        return next;
+      });
+
+      setSuccess(`Account ${target.id} (${target.name}) successfully removed.`);
       setDeleteConfirmUser(null);
       await loadData();
     } catch (err) {

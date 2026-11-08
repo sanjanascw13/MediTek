@@ -7,12 +7,16 @@ import com.mediTek.MediTek.dto.DoctorDto;
 import com.mediTek.MediTek.dto.EmailNotificationResult;
 import com.mediTek.MediTek.exception.ResourceNotFoundException;
 import com.mediTek.MediTek.repository.DepartmentRepository;
+import com.mediTek.MediTek.repository.DoctorActivationTokenRepository;
 import com.mediTek.MediTek.repository.DoctorRepository;
+import com.mediTek.MediTek.repository.UserAccountRepository;
 import com.mediTek.MediTek.security.CurrentUserService;
 import com.mediTek.MediTek.service.AccountProvisioningService;
 import com.mediTek.MediTek.service.BusinessIdService;
 import com.mediTek.MediTek.service.DoctorNotificationService;
 import com.mediTek.MediTek.service.DoctorService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,25 +26,33 @@ import java.util.stream.Collectors;
 @Service
 public class DoctorServiceImpl implements DoctorService {
 
+    private static final Logger log = LoggerFactory.getLogger(DoctorServiceImpl.class);
+
     private final DoctorRepository doctorRepository;
     private final DepartmentRepository departmentRepository;
     private final BusinessIdService businessIdService;
     private final AccountProvisioningService accountProvisioningService;
     private final CurrentUserService currentUserService;
     private final DoctorNotificationService doctorNotificationService;
+    private final DoctorActivationTokenRepository doctorActivationTokenRepository;
+    private final UserAccountRepository userAccountRepository;
 
     public DoctorServiceImpl(DoctorRepository doctorRepository,
                              DepartmentRepository departmentRepository,
                              BusinessIdService businessIdService,
                              AccountProvisioningService accountProvisioningService,
                              CurrentUserService currentUserService,
-                             DoctorNotificationService doctorNotificationService) {
+                             DoctorNotificationService doctorNotificationService,
+                             DoctorActivationTokenRepository doctorActivationTokenRepository,
+                             UserAccountRepository userAccountRepository) {
         this.doctorRepository = doctorRepository;
         this.departmentRepository = departmentRepository;
         this.businessIdService = businessIdService;
         this.accountProvisioningService = accountProvisioningService;
         this.currentUserService = currentUserService;
         this.doctorNotificationService = doctorNotificationService;
+        this.doctorActivationTokenRepository = doctorActivationTokenRepository;
+        this.userAccountRepository = userAccountRepository;
     }
 
     @Override
@@ -118,9 +130,18 @@ public class DoctorServiceImpl implements DoctorService {
         Doctor doctor = doctorRepository.findById(id)
                 .or(() -> doctorRepository.findByDoctorId(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor not found: " + id));
-        doctor.setIsActive(false);
-        doctorRepository.save(doctor);
-        accountProvisioningService.setEnabled(doctor.getPersonId(), false);
+
+        try {
+            doctorActivationTokenRepository.deleteByDoctor(doctor);
+            userAccountRepository.findByPerson_PersonId(doctor.getPersonId()).ifPresent(userAccountRepository::delete);
+            doctorRepository.delete(doctor);
+            log.info("Physically deleted doctor {} from database", id);
+        } catch (Exception ex) {
+            log.warn("Cannot physically delete doctor {} due to linked entities ({}). Soft-deleting instead.", id, ex.getMessage());
+            doctor.setIsActive(false);
+            doctorRepository.save(doctor);
+            accountProvisioningService.setEnabled(doctor.getPersonId(), false);
+        }
     }
 
     private DoctorDto mapToDto(Doctor doc) {
