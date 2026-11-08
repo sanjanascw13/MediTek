@@ -55,4 +55,11 @@ public class DoctorController {
     public ResponseEntity<DoctorDto> setActive(@PathVariable String id, @RequestParam boolean active) {
         return ResponseEntity.ok(doctorService.setActive(id, active));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ResponseEntity<Void> deleteDoctor(@PathVariable String id) {
+        doctorService.deleteDoctor(id);
+        return ResponseEntity.noContent().build();
+    }
 }

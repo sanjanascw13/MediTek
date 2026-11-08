@@ -1420,6 +1420,15 @@ export const api = {
     { params: { active } }
   ).then((response) => response.data),
 
+  deleteDoctor: (doctorId) => requestOrMock(
+    () => {
+      const idx = mockStore.doctors.findIndex((d) => d.doctorId === doctorId);
+      if (idx >= 0) mockStore.doctors.splice(idx, 1);
+      return null;
+    },
+    () => apiClient.delete(`/doctors/${encodeURIComponent(doctorId)}`).then((r) => r.data)
+  ),
+
   resendDoctorActivation: (doctorId) => apiClient.post(
     `/doctors/${encodeURIComponent(doctorId)}/resend-activation`
   ).then((response) => response.data),
@@ -1449,6 +1458,15 @@ export const api = {
     null,
     { params: { active } }
   ).then((response) => response.data),
+
+  deleteStaff: (staffId) => requestOrMock(
+    () => {
+      const idx = mockStore.staff.findIndex((s) => s.staffId === staffId);
+      if (idx >= 0) mockStore.staff.splice(idx, 1);
+      return null;
+    },
+    () => apiClient.delete(`/staff/${encodeURIComponent(staffId)}`).then((r) => r.data)
+  ),
 
   updatePatientProfile: (changes) => {
     if (!USE_MOCKS) return unavailable('Patient profile updates');

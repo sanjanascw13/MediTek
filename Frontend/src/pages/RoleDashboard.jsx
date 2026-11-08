@@ -787,10 +787,10 @@ function DemoNotice() {
 
 export default function RoleDashboard() {
   const role = api.getCurrentRole();
-  if (role === 'ADMIN') return <DashboardPage />;
+  if (role === 'ADMIN' || role === 'SUPER_ADMIN') return <DashboardPage />;
   if (role === 'PATIENT') return <PatientPortalPage section="overview" />;
   if (role === 'DOCTOR') return <ClinicalDashboard />;
   if (role === 'PHARMACIST') return <PharmacistDashboard />;
-  if (role === 'STAFF') return <StaffDashboard />;
+  if (role === 'STAFF' || role === 'RECEPTIONIST' || role === 'LAB_WORKER') return <StaffDashboard />;
   return <UnavailableNotice module="Role dashboard" detail="Your account does not have a recognized frontend role. Contact an administrator to verify your account configuration." />;
 }

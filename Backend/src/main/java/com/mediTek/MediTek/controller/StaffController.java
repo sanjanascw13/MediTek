@@ -43,4 +43,11 @@ public class StaffController {
     public ResponseEntity<StaffDto> setActive(@PathVariable String id, @RequestParam boolean active) {
         return ResponseEntity.ok(staffService.setActive(id, active));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ResponseEntity<Void> deleteStaff(@PathVariable String id) {
+        staffService.deleteStaff(id);
+        return ResponseEntity.noContent().build();
+    }
 }

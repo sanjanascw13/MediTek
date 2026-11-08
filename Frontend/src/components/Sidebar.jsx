@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -17,30 +17,41 @@ import {
   Receipt,
   FileText,
   Settings,
-  UserCog,
-  LogOut
+  ShieldAlert,
+  LogOut,
 } from 'lucide-react';
 import { api } from '../services/api';
-import { rolePaths } from '../services/roleAccess';
+import { getAllowedPaths } from '../services/roleAccess';
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const currentUser = api.getCurrentUser();
   const role = api.getCurrentRole();
-  const allowedPaths = rolePaths[role] || ['/'];
+  const [allowedPaths, setAllowedPaths] = useState(() => getAllowedPaths(role, currentUser));
+
+  useEffect(() => {
+    const handlePermissionsUpdate = () => {
+      setAllowedPaths(getAllowedPaths(role, currentUser));
+    };
+    window.addEventListener('meditek_permissions_updated', handlePermissionsUpdate);
+    return () => window.removeEventListener('meditek_permissions_updated', handlePermissionsUpdate);
+  }, [role, currentUser]);
 
   const handleLogout = () => {
     api.logout();
     navigate('/login');
   };
 
-  const allNavItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'User Management', path: '/user-management', icon: UserCog },
-    { name: 'Appointments', path: '/appointments', icon: CalendarDays },
-    { name: 'Doctors', path: '/doctors', icon: UserCheck },
-    { name: 'Staff', path: '/staff', icon: Users },
-  ];
+  const isSuperAdmin = role === 'SUPER_ADMIN' || currentUser?.role === 'SUPER_ADMIN' || role === 'ADMIN';
+
+  const allNavItems = isSuperAdmin
+    ? [{ name: 'Admin Dashboard', path: '/', icon: ShieldAlert }]
+    : [
+        { name: 'Dashboard', path: '/', icon: LayoutDashboard },
+        { name: 'Appointments', path: '/appointments', icon: CalendarDays },
+        { name: 'Doctors', path: '/doctors', icon: UserCheck },
+        { name: 'Staff', path: '/staff', icon: Users },
+      ];
 
   const allModuleItems = [
     { name: 'Patients', path: '/patients', icon: UserCircle },
@@ -54,6 +65,7 @@ export default function Sidebar() {
     { name: 'Medical Records', path: '/medical-records', icon: FileText },
     { name: 'Messages', path: '/messages', icon: MessageSquare },
   ];
+
   const patientItems = [
     { name: 'My Appointments', path: '/patient/appointments', icon: CalendarDays },
     { name: 'My Prescriptions', path: '/patient/prescriptions', icon: Pill },
@@ -61,15 +73,32 @@ export default function Sidebar() {
     { name: 'My Bills', path: '/patient/bills', icon: Receipt },
     { name: 'My Health Records', path: '/patient/records', icon: UserCircle },
   ];
+
   const navItems = allNavItems.filter((item) => allowedPaths.includes(item.path));
-  const moduleItems = role === 'PATIENT'
+  const moduleItems = isSuperAdmin
+    ? []
+    : role === 'PATIENT'
     ? patientItems
     : allModuleItems.filter((item) => allowedPaths.includes(item.path));
+
+  const roleLabel = isSuperAdmin
+    ? 'Super Admin • System Control'
+    : role === 'PHARMACIST'
+    ? 'Pharmacist'
+    : role === 'RECEPTIONIST'
+    ? 'Receptionist'
+    : role === 'LAB_WORKER'
+    ? 'Lab Worker'
+    : role === 'DOCTOR'
+    ? 'Doctor'
+    : role === 'PATIENT'
+    ? 'Patient'
+    : role || currentUser?.role || 'User';
 
   return (
     <aside className="w-64 min-h-screen bg-gradient-to-b from-[#111912] via-[#142016] to-[#0d140e] text-gray-300 flex flex-col justify-between p-4 rounded-3xl m-3 shadow-2xl border border-[#203023]">
       <div>
-        {/* Brand / Logo matching the reference image */}
+        {/* Brand / Logo */}
         <div className="flex items-center space-x-3 px-3 py-4 mb-4">
           <div className="w-10 h-10 rounded-xl bg-lime-500/20 flex items-center justify-center border border-lime-400/30 shadow-[0_0_15px_rgba(163,230,53,0.25)]">
             <Activity className="w-6 h-6 text-lime-400 stroke-[2.5]" />
@@ -112,33 +141,35 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        {/* Modules Navigation */}
-        <div>
-          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-            {role === 'PATIENT' ? 'My Health' : 'Modules'}
-          </p>
-          <nav className="space-y-1 max-h-[36vh] overflow-y-auto pr-1">
-            {moduleItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.name}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center space-x-3 px-4 py-2 rounded-xl text-sm transition-all duration-200 ${
-                      isActive
-                        ? 'bg-[#a3e635] text-[#0f1710] font-semibold shadow-md'
-                        : 'text-gray-400 hover:text-white hover:bg-white/5'
-                    }`
-                  }
-                >
-                  <Icon className="w-4 h-4 stroke-[1.8]" />
-                  <span>{item.name}</span>
-                </NavLink>
-              );
-            })}
-          </nav>
-        </div>
+        {/* Modules Navigation (Only displayed if user has assigned module access) */}
+        {moduleItems.length > 0 && (
+          <div>
+            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              {role === 'PATIENT' ? 'My Health' : 'Modules'}
+            </p>
+            <nav className="space-y-1 max-h-[36vh] overflow-y-auto pr-1">
+              {moduleItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.name}
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `flex items-center space-x-3 px-4 py-2 rounded-xl text-sm transition-all duration-200 ${
+                        isActive
+                          ? 'bg-[#a3e635] text-[#0f1710] font-semibold shadow-md'
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      }`
+                    }
+                  >
+                    <Icon className="w-4 h-4 stroke-[1.8]" />
+                    <span>{item.name}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </div>
+        )}
       </div>
 
       {/* Bottom Footer Section */}
@@ -163,14 +194,10 @@ export default function Sidebar() {
             />
             <div>
               <p className="text-sm font-semibold text-white leading-none">
-                {currentUser?.name || currentUser?.username || 'Clinical User'}
+                {currentUser?.name || currentUser?.username || 'Administrator'}
               </p>
               <p className="text-xs text-lime-400 font-medium mt-1">
-                {role === 'PHARMACIST'
-                  ? 'Pharmacist'
-                  : currentUser?.role === 'SUPER_ADMIN'
-                  ? 'SUPER_ADMIN'
-                  : role || currentUser?.role || 'User'}
+                {roleLabel}
               </p>
             </div>
           </div>

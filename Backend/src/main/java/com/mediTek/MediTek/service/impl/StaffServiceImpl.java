@@ -93,6 +93,17 @@ public class StaffServiceImpl implements StaffService {
         return mapToDto(saved);
     }
 
+    @Override
+    @Transactional
+    public void deleteStaff(String id) {
+        MedicalStaff staff = staffRepository.findById(id)
+                .or(() -> staffRepository.findByStaffId(id))
+                .orElseThrow(() -> new ResourceNotFoundException("Staff member not found: " + id));
+        staff.setIsActive(false);
+        staffRepository.save(staff);
+        accountProvisioningService.setEnabled(staff.getPersonId(), false);
+    }
+
     private StaffDto mapToDto(MedicalStaff staff) {
         return StaffDto.builder()
                 .personId(staff.getPersonId())

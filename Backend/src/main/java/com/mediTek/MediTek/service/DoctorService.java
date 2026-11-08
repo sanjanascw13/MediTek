@@ -8,4 +8,5 @@ public interface DoctorService {
     DoctorDto getDoctorById(String id);
     List<DoctorDto> getAllDoctors();
     DoctorDto setActive(String id, boolean active);
+    void deleteDoctor(String id);
 }

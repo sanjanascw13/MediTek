@@ -39,7 +39,7 @@ function ProtectedLayout() {
   if (location.pathname === '/change-password' && !api.getCurrentUser()?.mustChangePassword) {
     return <Navigate to="/" replace />;
   }
-  if (!canAccessPath(api.getCurrentRole(), location.pathname)) {
+  if (!canAccessPath(api.getCurrentRole(), location.pathname, api.getCurrentUser())) {
     return <Navigate to="/" replace />;
   }
 

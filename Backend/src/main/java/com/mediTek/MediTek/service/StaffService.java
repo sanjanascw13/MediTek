@@ -9,4 +9,5 @@ public interface StaffService {
     List<StaffDto> getAllStaff();
     StaffDto getStaffById(String id);
     StaffDto setActive(String id, boolean active);
+    void deleteStaff(String id);
 }

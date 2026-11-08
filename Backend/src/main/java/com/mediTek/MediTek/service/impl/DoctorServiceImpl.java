@@ -68,7 +68,6 @@ public class DoctorServiceImpl implements DoctorService {
         AccountProvisioningService.ProvisionedAccount provisioned = accountProvisioningService
                 .provisionAccount(saved, saved.getDoctorId(), Role.RoleName.DOCTOR);
 
-        // Dispatches email notification with single-use setup token (or reports unconfigured SMTP safely)
         EmailNotificationResult emailResult = doctorNotificationService.sendDoctorAccountCreatedNotification(
                 saved, provisioned.userAccount()
         );
@@ -111,6 +110,17 @@ public class DoctorServiceImpl implements DoctorService {
         Doctor saved = doctorRepository.save(doctor);
         accountProvisioningService.setEnabled(saved.getPersonId(), active);
         return mapToDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteDoctor(String id) {
+        Doctor doctor = doctorRepository.findById(id)
+                .or(() -> doctorRepository.findByDoctorId(id))
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor not found: " + id));
+        doctor.setIsActive(false);
+        doctorRepository.save(doctor);
+        accountProvisioningService.setEnabled(doctor.getPersonId(), false);
     }
 
     private DoctorDto mapToDto(Doctor doc) {
