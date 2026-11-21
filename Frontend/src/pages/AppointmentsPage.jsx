@@ -201,7 +201,6 @@ export default function AppointmentsPage() {
                   {role === 'DOCTOR' && appointment.doctorPersonId === currentUser?.personId && appointment.status === 'SCHEDULED' && (
                     <span className="flex gap-2">
                       <button onClick={() => handleStatus(appointment, 'COMPLETED')} className="text-emerald-700 font-semibold hover:underline" title="Mark completed"><Check className="inline h-4 w-4" /></button>
-                      {api.isMockMode() && <button onClick={() => handleStatus(appointment, 'CANCELLED')} className="text-rose-700 font-semibold hover:underline" title="Cancel appointment"><X className="inline h-4 w-4" /></button>}
                     </span>
                   )}
                   {!date && <Clock className="h-3.5 w-3.5" />}

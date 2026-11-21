@@ -96,7 +96,7 @@ export default function StaffPage() {
                 <th className="pb-3">Clinical Role</th>
                 <th className="pb-3">Assigned Department</th>
                 <th className="pb-3">Shift</th>
-                <th className="pb-3 pr-2 text-right">Status{!api.isMockMode() && isAdmin ? ' / Management' : ''}</th>
+                <th className="pb-3 pr-2 text-right">Status{isAdmin ? ' / Management' : ''}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 text-sm">
@@ -119,14 +119,14 @@ export default function StaffPage() {
                   <td className="py-3.5 text-xs text-gray-600">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gray-100 text-gray-700">
                       <Clock className="w-3 h-3 text-gray-400" />
-                      {s.shift || (api.isMockMode() ? 'Not assigned' : 'Not tracked')}
+                      {s.shift || 'Not assigned'}
                     </span>
                   </td>
                   <td className="py-3.5 pr-2 text-right">
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${s.isActive === false ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                      {s.isActive === false ? 'Inactive' : api.isMockMode() ? 'On-Duty' : 'Active'}
+                      {s.isActive === false ? 'Inactive' : 'Active'}
                     </span>
-                    {!api.isMockMode() && isAdmin && (
+                    {isAdmin && (
                       <button
                         type="button"
                         disabled={savingId === s.staffId}

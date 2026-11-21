@@ -175,7 +175,6 @@ export default function BillingPage() {
           </button>
         )}
       </div>
-      {api.isMockMode() && <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Development demo invoices only. Payment entries are local records and do not process money or card details.</p>}
       {error && <ErrorState message={error} onRetry={loadData} />}
       {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}
       {loading && <LoadingState label="Loading invoices..." />}

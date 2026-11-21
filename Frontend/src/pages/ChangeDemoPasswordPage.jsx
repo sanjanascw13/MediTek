@@ -39,13 +39,11 @@ export default function ChangeDemoPasswordPage() {
         <div className="flex items-center gap-3">
           <div className="rounded-2xl bg-lime-100 p-3 text-lime-900"><KeyRound className="h-6 w-6" /></div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-lime-800">{api.isMockMode() ? 'Development demo account' : 'Account security'}</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-lime-800">Account security</p>
             <h1 className="text-2xl font-black text-gray-900">Change your temporary password</h1>
           </div>
         </div>
-        <p className="text-sm text-gray-600">{api.isMockMode()
-          ? "Choose a new password with at least 12 characters to continue. This change is stored only in this browser's demo account data."
-          : 'Enter your temporary password and choose a new password with at least 12 characters to continue.'}</p>
+        <p className="text-sm text-gray-600">Enter your temporary password and choose a new password with at least 12 characters to continue.</p>
         {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
           {!api.isMockMode() && (

@@ -159,11 +159,6 @@ export default function BloodBankPage() {
           {canConfigureBank && <button onClick={() => setShowBankForm(true)} className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-bold text-white">Add blood bank</button>}
         </div>
       </header>
-      <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-        {isDemo
-          ? 'Development demo inventory only. These records are not screened or clinically available.'
-          : 'Inventory is tracked by blood batch and volume. Issuing only checks recorded blood-group equality, expiry, and available volume; it does not replace screening, crossmatching, or clinician authorization.'}
-      </p>
       {error && <ErrorState message={error} onRetry={loadData} />}
       {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}
       {bloodBanks.length === 0 && !loading && <p className="rounded-2xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">{canConfigureBank ? 'Add a blood bank before receiving inventory.' : 'No blood banks are configured. Ask a Super Admin to set one up.'}</p>}

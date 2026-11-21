@@ -51,8 +51,7 @@ export default function MessagesPage() {
 
   return (
     <div className="space-y-6">
-      <header className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm"><h1 className="text-2xl font-black text-gray-900">Clinical Staff & Inter-Departmental Messaging</h1><p className="text-sm text-gray-500">Sample notices and local demo handovers</p></header>
-      <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Development demo messages only. This screen does not transmit notifications or clinical handovers.</p>
+      <header className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm"><h1 className="text-2xl font-black text-gray-900">Clinical Staff & Inter-Departmental Messaging</h1><p className="text-sm text-gray-500">Staff communications and clinical notices</p></header>
       {error && <ErrorState message={error} onRetry={loadMessages} />}
       {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}
       <section className="flex h-[650px] flex-col justify-between rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">

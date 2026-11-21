@@ -129,15 +129,12 @@ export default function LabsPage() {
   return (
     <div className="space-y-6">
       <header className="flex flex-col justify-between gap-4 rounded-3xl border border-gray-100 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
-        <div><h1 className="text-2xl font-black text-gray-900">Clinical Pathology & Diagnostic Laboratory</h1><p className="text-sm text-gray-500">{api.isMockMode() ? 'Demo test orders and sample report workflow' : 'Role-scoped laboratory orders and reports'}</p></div>
-        {(isAdministrator || isDoctor) && <button onClick={() => setShowOrder(true)} disabled={!patients.length || !doctors.length} className="inline-flex items-center gap-2 rounded-2xl bg-[#a3e635] px-5 py-2.5 text-sm font-bold text-gray-900 disabled:opacity-50"><Plus className="h-4 w-4" />{api.isMockMode() ? 'Order demo test' : 'Order test'}</button>}
+        <div><h1 className="text-2xl font-black text-gray-900">Clinical Pathology & Diagnostic Laboratory</h1><p className="text-sm text-gray-500">Laboratory diagnostic investigations, orders and reports</p></div>
+        {(isAdministrator || isDoctor) && <button onClick={() => setShowOrder(true)} disabled={!patients.length || !doctors.length} className="inline-flex items-center gap-2 rounded-2xl bg-[#a3e635] px-5 py-2.5 text-sm font-bold text-gray-900 disabled:opacity-50"><Plus className="h-4 w-4" />Order test</button>}
       </header>
-      <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">{api.isMockMode()
-        ? 'Development demo records only. Do not use these results for clinical decisions; changes are not sent to a backend.'
-        : 'Live patient laboratory data. Access is limited by role; report publication and cancellation are recorded by the backend.'}</p>
       {error && <ErrorState message={error} onRetry={loadData} />}
       {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}
-      <div className="flex gap-2"><button onClick={() => setActiveTab('TESTS')} className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'TESTS' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'}`}>Ordered tests</button><button onClick={() => setActiveTab('REPORTS')} className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'REPORTS' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'}`}>{api.isMockMode() ? 'Verified demo reports' : 'Completed reports'}</button></div>
+      <div className="flex gap-2"><button onClick={() => setActiveTab('TESTS')} className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'TESTS' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'}`}>Ordered tests</button><button onClick={() => setActiveTab('REPORTS')} className={`rounded-xl px-4 py-2 text-sm font-semibold ${activeTab === 'REPORTS' ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'}`}>Completed reports</button></div>
       {loading ? <LoadingState label="Loading laboratory records..." /> : visibleTests.length === 0 ? <EmptyState>No {activeTab === 'REPORTS' ? 'completed reports' : 'test orders'} are available.</EmptyState> : (
         <div className="space-y-4">
           {visibleTests.map((test) => (

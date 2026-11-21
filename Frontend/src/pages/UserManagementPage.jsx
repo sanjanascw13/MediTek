@@ -575,13 +575,9 @@ export default function UserManagementPage() {
   return (
     <section className="space-y-6">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-lime-800">Development demo accounts</p>
+        <p className="text-sm font-semibold uppercase tracking-wide text-lime-800">Hospital Administration</p>
         <h1 className="mt-1 text-3xl font-black text-gray-900">User Management</h1>
-        <p className="mt-1 text-sm text-gray-500">Create and manage local demo Doctor and Staff accounts. These are not real hospital accounts.</p>
-      </div>
-      <div className="flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-        <ShieldAlert className="h-5 w-5 shrink-0" />
-        <p>Demo-only accounts are saved in this browser. Initial passwords are stored as salted PBKDF2 hashes and shown only once after creation. All role restrictions are frontend demo behavior, not real security controls.</p>
+        <p className="mt-1 text-sm text-gray-500">Configure and manage Doctor, Staff, and clinical user accounts.</p>
       </div>
       {error && <ErrorState message={error} onRetry={loadAccounts} />}
       {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}

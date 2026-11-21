@@ -151,14 +151,9 @@ export default function SurgeriesPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input aria-label="Search surgeries" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search schedules" className="w-full rounded-xl border border-gray-200 py-2 pl-9 pr-3 text-sm sm:w-56" />
           </label>
-          {canSchedule && <button onClick={() => setShowForm(true)} disabled={!patients.length || !theaters.length} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#a3e635] px-5 py-2.5 text-sm font-bold text-gray-900 disabled:opacity-50"><Plus className="h-4 w-4" />{isDemo ? 'Schedule demo surgery' : 'Schedule surgery'}</button>}
+          {canSchedule && <button onClick={() => setShowForm(true)} disabled={!patients.length || !theaters.length} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#a3e635] px-5 py-2.5 text-sm font-bold text-gray-900 disabled:opacity-50"><Plus className="h-4 w-4" />Schedule surgery</button>}
         </div>
       </header>
-      <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-        {isDemo
-          ? 'Development demo only. Schedules do not reserve real facilities or represent clinical clearance.'
-          : 'Scheduling rejects overlapping bookings using each procedure’s scheduled duration. No clinical clearance or operating-room equipment readiness is represented.'}
-      </p>
       {error && <ErrorState message={error} onRetry={() => loadData(search)} />}
       {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}
       {loading ? <LoadingState label="Loading surgery schedules..." /> : isDemo ? (

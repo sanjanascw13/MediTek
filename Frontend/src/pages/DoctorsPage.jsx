@@ -89,15 +89,6 @@ export default function DoctorsPage() {
 
       {error && <ErrorState message={error} onRetry={loadDoctors} />}
       {profileMessage && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{profileMessage}</p>}
-      {isDoctor && api.isMockMode() && (
-        <form onSubmit={saveProfile} className="grid gap-3 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:grid-cols-3">
-          <label className="text-xs font-semibold text-gray-700">Name<input required value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-normal" /></label>
-          <label className="text-xs font-semibold text-gray-700">Email<input required type="email" value={profile.email} onChange={(event) => setProfile({ ...profile, email: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-normal" /></label>
-          <label className="text-xs font-semibold text-gray-700">Phone<input required type="tel" value={profile.phoneNumber} onChange={(event) => setProfile({ ...profile, phoneNumber: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm font-normal" /></label>
-          <div className="sm:col-span-3"><button disabled={savingProfile} className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingProfile ? 'Saving…' : 'Update my profile'}</button></div>
-        </form>
-      )}
-      {isDoctor && !api.isMockMode() && <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">The current live API does not expose a doctor profile update operation.</p>}
       {loading && <LoadingState label="Loading doctors..." />}
       {!loading && !error && filtered.length === 0 && <EmptyState>{doctors.length ? 'No doctors match your search.' : 'No doctor profiles are available.'}</EmptyState>}
 

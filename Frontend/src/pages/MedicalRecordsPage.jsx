@@ -93,7 +93,6 @@ export default function MedicalRecordsPage() {
         </div>
         {(role === 'DOCTOR' || role === 'STAFF') && <button type="button" onClick={() => setShowForm(true)} disabled={!patients.length} className="inline-flex items-center gap-2 rounded-2xl bg-[#a3e635] px-5 py-2.5 text-sm font-bold text-[#142008] shadow-md disabled:opacity-50"><Plus className="h-4 w-4" />Add record</button>}
       </div>
-      {api.isMockMode() && <p className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Development demo notes only. They are in-memory and reset on reload; never enter real patient information.</p>}
       {error && <ErrorState message={error} onRetry={loadData} />}
       {success && <p role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{success}</p>}
       {loading && <LoadingState label="Loading medical records..." />}
