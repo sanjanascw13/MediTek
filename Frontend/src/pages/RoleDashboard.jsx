@@ -29,6 +29,11 @@ import DoctorClinicalDashboard from '../components/dashboard/DoctorClinicalDashb
 import LabWorkerDashboard from '../components/dashboard/LabWorkerDashboard';
 import ReceptionistDashboard from '../components/dashboard/ReceptionistDashboard';
 
+const formatLKR = (amount) => {
+  const val = Number(amount) || 0;
+  return `LKR ${val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 function DashboardCard({ label, value, icon: Icon, to }) {
   return (
     <Link to={to} className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-md">
@@ -478,14 +483,14 @@ function PharmacistDashboard() {
                   <th className="py-2.5 px-4">Patient</th>
                   <th className="py-2.5 px-4">Medicine</th>
                   <th className="py-2.5 px-4 text-center">Qty</th>
-                  <th className="py-2.5 px-4 text-right">Unit Price</th>
-                  <th className="py-2.5 px-4 text-right">Total Dispatched</th>
+                  <th className="py-2.5 px-4 text-right">Unit Price (LKR)</th>
+                  <th className="py-2.5 px-4 text-right">Total Dispatched (LKR)</th>
                   <th className="py-2.5 px-4 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 font-medium">
                 {dispensations.slice(0, 10).map((record) => {
-                  const total = ((record.quantity || 0) * (Number(record.unitPrice) || 0)).toFixed(2);
+                  const total = ((record.quantity || 0) * (Number(record.unitPrice) || 0));
                   return (
                     <tr key={record.dispensationId} className="hover:bg-gray-50">
                       <td className="py-3 px-4 font-mono font-bold text-gray-900">{record.dispensationId}</td>
@@ -499,10 +504,10 @@ function PharmacistDashboard() {
                       <td className="py-3 px-4 font-semibold text-gray-800">{record.medicineName}</td>
                       <td className="py-3 px-4 text-center font-bold text-gray-900">{record.quantity}</td>
                       <td className="py-3 px-4 text-right text-gray-600 font-mono">
-                        ${Number(record.unitPrice || 0).toFixed(2)}
+                        {formatLKR(record.unitPrice || 0)}
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-gray-900 font-mono">
-                        ${total}
+                        {formatLKR(total)}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-lime-100 text-lime-900 border border-lime-200">
@@ -604,7 +609,7 @@ function PharmacistDashboard() {
                 </button>
               </div>
               <p className="text-[11px] text-gray-400 mt-1">
-                Estimated bill item: ${(Number(dispenseQty || 0) * (selectedTarget.unitPrice || 0)).toFixed(2)} (${selectedTarget.unitPrice || 0}/unit)
+                Estimated bill item: {formatLKR(Number(dispenseQty || 0) * (selectedTarget.unitPrice || 0))} ({formatLKR(selectedTarget.unitPrice || 0)}/unit)
               </p>
             </div>
 

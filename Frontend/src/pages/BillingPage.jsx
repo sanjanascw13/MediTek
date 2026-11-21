@@ -5,6 +5,10 @@ import { EmptyState, ErrorState, LoadingState } from '../components/ApiState';
 
 const emptyLine = () => ({ description: '', quantity: '1', unitPrice: '' });
 const displayDate = (value) => (value ? new Date(value).toLocaleDateString() : '—');
+const formatLKR = (amount) => {
+  const val = Number(amount) || 0;
+  return `LKR ${val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 export default function BillingPage() {
   const [bills, setBills] = useState([]);
@@ -181,11 +185,11 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <div className="flex items-center justify-between rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-          <div><p className="text-xs font-semibold text-gray-400">Payments recorded</p><h3 className="mt-1 text-2xl font-black text-gray-900">${settledRevenue.toFixed(2)}</h3></div>
+          <div><p className="text-xs font-semibold text-gray-400">Payments recorded</p><h3 className="mt-1 text-2xl font-black text-gray-900">{formatLKR(settledRevenue)}</h3></div>
           <div className="rounded-2xl bg-emerald-50 p-3.5 text-emerald-600"><CheckCircle2 className="h-7 w-7" /></div>
         </div>
         <div className="flex items-center justify-between rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-          <div><p className="text-xs font-semibold text-gray-400">Outstanding balance</p><h3 className="mt-1 text-2xl font-black text-amber-600">${outstandingRevenue.toFixed(2)}</h3></div>
+          <div><p className="text-xs font-semibold text-gray-400">Outstanding balance</p><h3 className="mt-1 text-2xl font-black text-amber-600">{formatLKR(outstandingRevenue)}</h3></div>
           <div className="rounded-2xl bg-amber-50 p-3.5 text-amber-600"><Clock className="h-7 w-7" /></div>
         </div>
         <div className="flex items-center justify-between rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -209,9 +213,9 @@ export default function BillingPage() {
                 <tr key={bill.billId} className="hover:bg-gray-50/70">
                   <td className="py-3.5 pl-2 font-mono text-xs font-bold text-lime-800">{bill.billId}</td>
                   <td className="py-3.5"><p className="font-bold text-gray-900">{bill.patientName}</p><p className="text-xs text-gray-500">{bill.patientId}</p></td>
-                  <td className="py-3.5 font-bold text-gray-900">${Number(bill.amountTotal).toFixed(2)}</td>
-                  <td className="py-3.5">${Number(bill.amountPaid || 0).toFixed(2)}</td>
-                  <td className="py-3.5 font-semibold">${Number(bill.balanceDue ?? bill.amountTotal).toFixed(2)}</td>
+                  <td className="py-3.5 font-bold text-gray-900">{formatLKR(bill.amountTotal)}</td>
+                  <td className="py-3.5">{formatLKR(bill.amountPaid || 0)}</td>
+                  <td className="py-3.5 font-semibold">{formatLKR(bill.balanceDue ?? bill.amountTotal)}</td>
                   <td className="py-3.5 text-xs text-gray-500">{displayDate(bill.issuedAt)}</td>
                   <td className="py-3.5"><span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${bill.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{bill.status}</span></td>
                   <td className="py-3.5 pr-2 text-right"><button type="button" onClick={() => { setSelectedBill(bill); setPaymentAmount(String(bill.balanceDue ?? bill.amountTotal)); setError(''); }} className="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2.5 py-1.5 text-xs font-semibold text-gray-700"><FileText className="h-3.5 w-3.5" />Details</button></td>
@@ -234,7 +238,7 @@ export default function BillingPage() {
               {form.items.map((item, index) => <div key={index} className="grid gap-2 sm:grid-cols-[1fr_90px_130px_auto]">
                 <input required maxLength={255} aria-label="Item description" placeholder="Description" value={item.description} onChange={(event) => setForm((current) => ({ ...current, items: current.items.map((line, lineIndex) => lineIndex === index ? { ...line, description: event.target.value } : line) }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
                 <input required type="number" min="1" step="1" aria-label="Quantity" placeholder="Qty" value={item.quantity} onChange={(event) => setForm((current) => ({ ...current, items: current.items.map((line, lineIndex) => lineIndex === index ? { ...line, quantity: event.target.value } : line) }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
-                <input required type="number" min="0" step="0.01" aria-label="Unit price" placeholder="Unit price" value={item.unitPrice} onChange={(event) => setForm((current) => ({ ...current, items: current.items.map((line, lineIndex) => lineIndex === index ? { ...line, unitPrice: event.target.value } : line) }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+                <input required type="number" min="0" step="0.01" aria-label="Unit price" placeholder="Unit price (LKR)" value={item.unitPrice} onChange={(event) => setForm((current) => ({ ...current, items: current.items.map((line, lineIndex) => lineIndex === index ? { ...line, unitPrice: event.target.value } : line) }))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
                 <button type="button" aria-label="Remove item" disabled={form.items.length === 1} onClick={() => setForm((current) => ({ ...current, items: current.items.filter((_, lineIndex) => lineIndex !== index) }))} className="rounded-xl p-2 text-rose-700 disabled:opacity-30"><Trash2 className="h-4 w-4" /></button>
               </div>)}
             </div>
@@ -242,7 +246,7 @@ export default function BillingPage() {
             <label className="block max-w-xs text-sm font-semibold">Tax rate (%)
               <input type="number" min="0" max="100" step="0.01" value={form.taxRatePercent} onChange={(event) => setForm({ ...form, taxRatePercent: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-200 p-3 font-normal" />
             </label>
-            <p className="text-xs text-gray-500">Tax is calculated on the sum of line totals and rounded to two decimal places. No currency is assumed.</p>
+            <p className="text-xs text-gray-500">Tax is calculated on the sum of line totals and rounded to two decimal places. Amounts are in Sri Lankan Rupees (LKR).</p>
             <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowForm(false)} className="rounded-xl bg-gray-100 px-4 py-2 text-sm font-semibold">Cancel</button><button disabled={saving} className="rounded-xl bg-[#a3e635] px-4 py-2 text-sm font-bold">{saving ? 'Saving…' : 'Create invoice'}</button></div>
           </form>
         </div>
@@ -260,25 +264,25 @@ export default function BillingPage() {
                 <form key={item.lineItemId} onSubmit={saveLineItem} className="grid gap-2 rounded-xl bg-gray-50 p-3 sm:grid-cols-[1fr_90px_130px_auto_auto]">
                   <input required maxLength={255} aria-label="Edit item description" value={editingLine.description} onChange={(event) => setEditingLine({ ...editingLine, description: event.target.value })} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
                   <input required type="number" min="1" step="1" aria-label="Edit item quantity" value={editingLine.quantity} onChange={(event) => setEditingLine({ ...editingLine, quantity: event.target.value })} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
-                  <input required type="number" min="0" step="0.01" aria-label="Edit item unit price" value={editingLine.unitPrice} onChange={(event) => setEditingLine({ ...editingLine, unitPrice: event.target.value })} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+                  <input required type="number" min="0" step="0.01" aria-label="Edit item unit price" placeholder="Unit price (LKR)" value={editingLine.unitPrice} onChange={(event) => setEditingLine({ ...editingLine, unitPrice: event.target.value })} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
                   <button className="rounded-lg bg-gray-900 px-2 py-1 text-xs font-semibold text-white">Save</button>
                   <button type="button" onClick={() => setEditingLineId('')} className="rounded-lg bg-white px-2 py-1 text-xs font-semibold">Cancel</button>
                 </form>
               ) : <div key={item.lineItemId} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 p-3 text-sm">
-                <div><p className="font-semibold">{item.description}</p><p className="text-xs text-gray-500">{item.quantity} × ${Number(item.unitPrice).toFixed(2)}</p></div>
-                <div className="flex items-center gap-3"><b>${Number(item.lineTotal).toFixed(2)}</b>{canEditItems && <><button type="button" onClick={() => { setEditingLineId(item.lineItemId); setEditingLine({ description: item.description, quantity: String(item.quantity), unitPrice: String(item.unitPrice) }); }} className="text-xs font-semibold text-blue-700">Edit</button><button type="button" onClick={() => removeLineItem(item.lineItemId)} aria-label={`Remove ${item.description}`} className="text-rose-700"><Trash2 className="h-4 w-4" /></button></>}</div>
+                <div><p className="font-semibold">{item.description}</p><p className="text-xs text-gray-500">{item.quantity} × {formatLKR(item.unitPrice)}</p></div>
+                <div className="flex items-center gap-3"><b>{formatLKR(item.lineTotal)}</b>{canEditItems && <><button type="button" onClick={() => { setEditingLineId(item.lineItemId); setEditingLine({ description: item.description, quantity: String(item.quantity), unitPrice: String(item.unitPrice) }); }} className="text-xs font-semibold text-blue-700">Edit</button><button type="button" onClick={() => removeLineItem(item.lineItemId)} aria-label={`Remove ${item.description}`} className="text-rose-700"><Trash2 className="h-4 w-4" /></button></>}</div>
               </div>)}
-              <div className="space-y-1 border-t pt-3 text-right text-sm"><p>Subtotal: ${Number(selectedBill.subtotal).toFixed(2)}</p><p>Tax ({Number(selectedBill.taxRatePercent).toFixed(2)}%): ${Number(selectedBill.taxAmount).toFixed(2)}</p><p className="font-bold">Total: ${Number(selectedBill.amountTotal).toFixed(2)} · Balance: ${Number(selectedBill.balanceDue ?? selectedBill.amountTotal).toFixed(2)}</p></div>
+              <div className="space-y-1 border-t pt-3 text-right text-sm"><p>Subtotal: {formatLKR(selectedBill.subtotal)}</p><p>Tax ({Number(selectedBill.taxRatePercent).toFixed(2)}%): {formatLKR(selectedBill.taxAmount)}</p><p className="font-bold">Total: {formatLKR(selectedBill.amountTotal)} · Balance: {formatLKR(selectedBill.balanceDue ?? selectedBill.amountTotal)}</p></div>
             </div>
             {canEditItems && <form onSubmit={addLineItem} className="grid gap-2 rounded-xl border border-gray-100 p-3 sm:grid-cols-[1fr_90px_130px_auto]">
               <input required maxLength={255} aria-label="New item description" placeholder="Add description" value={lineForm.description} onChange={(event) => setLineForm({ ...lineForm, description: event.target.value })} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
               <input required type="number" min="1" step="1" aria-label="New item quantity" value={lineForm.quantity} onChange={(event) => setLineForm({ ...lineForm, quantity: event.target.value })} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
-              <input required type="number" min="0" step="0.01" aria-label="New item unit price" placeholder="Unit price" value={lineForm.unitPrice} onChange={(event) => setLineForm({ ...lineForm, unitPrice: event.target.value })} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+              <input required type="number" min="0" step="0.01" aria-label="New item unit price" placeholder="Unit price (LKR)" value={lineForm.unitPrice} onChange={(event) => setLineForm({ ...lineForm, unitPrice: event.target.value })} className="rounded-lg border border-gray-200 px-3 py-2 text-sm" />
               <button className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Add item</button>
             </form>}
-            <div><h3 className="mb-2 font-bold">Payment history</h3>{selectedBill.payments?.length ? selectedBill.payments.map((payment) => <p key={payment.paymentId} className="rounded-lg bg-gray-50 p-2 text-sm">{displayDate(payment.paidAt)} · {payment.paymentMethod} · ${Number(payment.amount).toFixed(2)} · {payment.recordedBy}</p>) : <p className="text-sm text-gray-500">No payments recorded.</p>}</div>
+            <div><h3 className="mb-2 font-bold">Payment history</h3>{selectedBill.payments?.length ? selectedBill.payments.map((payment) => <p key={payment.paymentId} className="rounded-lg bg-gray-50 p-2 text-sm">{displayDate(payment.paidAt)} · {payment.paymentMethod} · {formatLKR(payment.amount)} · {payment.recordedBy}</p>) : <p className="text-sm text-gray-500">No payments recorded.</p>}</div>
             {canRecordPayment && <form onSubmit={recordPayment} className="grid gap-2 rounded-xl border border-gray-100 p-3 sm:grid-cols-[1fr_1fr_auto]">
-              <label className="text-xs font-semibold">Amount<input required type="number" min="0.01" max={Number(selectedBill.balanceDue ?? selectedBill.amountTotal)} step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal" /></label>
+              <label className="text-xs font-semibold">Amount (LKR)<input required type="number" min="0.01" max={Number(selectedBill.balanceDue ?? selectedBill.amountTotal)} step="0.01" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal" /></label>
               <label className="text-xs font-semibold">Method<select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal"><option value="CASH">Cash</option><option value="BANK_TRANSFER">Bank transfer</option><option value="OTHER">Other</option></select></label>
               <button className="self-end rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white">Record payment</button>
             </form>}

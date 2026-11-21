@@ -15,7 +15,7 @@ import {
   FileText,
   User,
   ArrowRightLeft,
-  DollarSign,
+  Banknote,
   Printer,
   CreditCard,
   Building2,
@@ -501,7 +501,7 @@ export default function ReceptionistDashboard() {
               <p className="mt-0.5 text-xs text-emerald-600 font-semibold">Total Hospital Intake</p>
             </div>
             <div className="rounded-2xl bg-purple-50 p-3 text-purple-600">
-              <DollarSign className="h-6 w-6" />
+              <Banknote className="h-6 w-6" />
             </div>
           </div>
         </div>

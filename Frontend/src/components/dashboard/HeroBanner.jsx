@@ -9,6 +9,11 @@ import {
   Users
 } from 'lucide-react';
 
+const formatLKR = (amount) => {
+  const val = Number(amount) || 0;
+  return `LKR ${val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 export default function HeroBanner({ stats, showDemoTrends = true }) {
   const role = stats?.role;
 
@@ -24,14 +29,14 @@ export default function HeroBanner({ stats, showDemoTrends = true }) {
       },
       {
         title: 'Outstanding Balance',
-        value: stats?.outstandingBalance != null ? `$${stats.outstandingBalance.toFixed(2)}` : '$0.00',
+        value: stats?.outstandingBalance != null ? formatLKR(stats.outstandingBalance) : 'LKR 0.00',
         icon: Wallet,
         barColor: 'bg-amber-400',
         bars: [25, 35, 50, 60, 75, 85, 100]
       },
       {
         title: 'Total Paid',
-        value: stats?.totalPaid != null ? `$${stats.totalPaid.toFixed(2)}` : '$0.00',
+        value: stats?.totalPaid != null ? formatLKR(stats.totalPaid) : 'LKR 0.00',
         icon: Wallet,
         barColor: 'bg-cyan-400',
         bars: [30, 45, 35, 60, 75, 90, 100]
@@ -109,9 +114,10 @@ export default function HeroBanner({ stats, showDemoTrends = true }) {
   } else {
     // SUPER_ADMIN / ADMIN
     const formatEarning = (amt) => {
-      if (amt == null) return '$0.00';
-      if (amt >= 1000) return `$${(amt / 1000).toFixed(1)}k`;
-      return `$${amt.toFixed(2)}`;
+      const val = Number(amt) || 0;
+      if (val >= 1000000) return `LKR ${(val / 1000000).toFixed(2)}M`;
+      if (val >= 1000) return `LKR ${(val / 1000).toFixed(1)}k`;
+      return formatLKR(val);
     };
 
     cards = [

@@ -18,6 +18,11 @@ import {
 } from 'lucide-react';
 import { EmptyState, ErrorState, LoadingState } from '../components/ApiState';
 
+const formatLKR = (amount) => {
+  const val = Number(amount) || 0;
+  return `LKR ${val.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 const emptyItem = () => ({
   medicineId: '',
   prescribedQuantity: '10',
@@ -382,7 +387,7 @@ export default function PharmacyPage() {
                     <div>
                       <h4 className="text-sm font-bold text-gray-900 line-clamp-1">{med.name}</h4>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Price: <strong className="text-gray-900">${Number(med.price).toFixed(2)}</strong>
+                        Price: <strong className="text-gray-900">{formatLKR(med.price)}</strong>
                       </p>
                       <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
                         <Building2 className="w-3 h-3 text-lime-700 shrink-0" />
@@ -539,7 +544,7 @@ export default function PharmacyPage() {
             <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100 space-y-1">
               <p className="font-bold text-gray-900">{selectedMedicine.name}</p>
               <p className="text-xs text-gray-500">
-                Unit price: ${Number(selectedMedicine.price).toFixed(2)} · {selectedMedicine.stock} units available in formulary
+                Unit price: {formatLKR(selectedMedicine.price)} · {selectedMedicine.stock} units available in formulary
               </p>
             </div>
 
@@ -713,7 +718,7 @@ export default function PharmacyPage() {
                         <option value="">Select from formulary</option>
                         {medicines.map((m) => (
                           <option key={m.medicineId} value={m.medicineId}>
-                            {m.name} ({m.category}) - ${Number(m.price).toFixed(2)}
+                            {m.name} ({m.category}) - {formatLKR(m.price)}
                           </option>
                         ))}
                       </select>
@@ -935,7 +940,7 @@ export default function PharmacyPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Unit Price ($/LKR) *
+                    Unit Price (LKR) *
                   </label>
                   <input
                     type="number"
