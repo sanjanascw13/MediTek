@@ -36,3 +36,11 @@ build/
 node_modules/
 dist/
 
+### Local Credentials & Environment ###
+access.md
+*.env
+*.env.*
+!*.env.example
+*.local
+application-local.properties
+
