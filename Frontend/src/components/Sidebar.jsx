@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   Activity,
   LayoutDashboard,
@@ -18,14 +18,12 @@ import {
   FileText,
   Settings,
   ShieldAlert,
-  LogOut,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { getAllowedPaths } from '../services/roleAccess';
 
 export default function Sidebar() {
-  const navigate = useNavigate();
-  const currentUser = api.getCurrentUser();
+  const [currentUser, setCurrentUser] = useState(() => api.getCurrentUser());
   const role = api.getCurrentRole();
   const [allowedPaths, setAllowedPaths] = useState(() => getAllowedPaths(role, currentUser));
 
@@ -33,19 +31,32 @@ export default function Sidebar() {
     const handlePermissionsUpdate = () => {
       setAllowedPaths(getAllowedPaths(role, currentUser));
     };
+    const handleUserUpdate = () => {
+      setCurrentUser(api.getCurrentUser());
+    };
     window.addEventListener('meditek_permissions_updated', handlePermissionsUpdate);
-    return () => window.removeEventListener('meditek_permissions_updated', handlePermissionsUpdate);
+    window.addEventListener('meditek_user_updated', handleUserUpdate);
+    return () => {
+      window.removeEventListener('meditek_permissions_updated', handlePermissionsUpdate);
+      window.removeEventListener('meditek_user_updated', handleUserUpdate);
+    };
   }, [role, currentUser]);
-
-  const handleLogout = () => {
-    api.logout();
-    navigate('/login');
-  };
 
   const isSuperAdmin = role === 'SUPER_ADMIN' || currentUser?.role === 'SUPER_ADMIN' || role === 'ADMIN';
 
   const allNavItems = isSuperAdmin
     ? [{ name: 'Admin Dashboard', path: '/', icon: ShieldAlert }]
+    : role === 'LAB_WORKER'
+    ? [{ name: 'Lab Command Desk', path: '/', icon: LayoutDashboard }]
+    : role === 'PHARMACIST'
+    ? [{ name: 'Pharmacy Desk', path: '/', icon: LayoutDashboard }]
+    : role === 'RECEPTIONIST'
+    ? [
+        { name: 'Front Desk Command', path: '/', icon: LayoutDashboard },
+        { name: 'Appointments Desk', path: '/appointments', icon: CalendarDays },
+      ]
+    : role === 'PATIENT'
+    ? [{ name: 'My Health Overview', path: '/', icon: LayoutDashboard }]
     : [
         { name: 'Dashboard', path: '/', icon: LayoutDashboard },
         { name: 'Appointments', path: '/appointments', icon: CalendarDays },
@@ -58,7 +69,7 @@ export default function Sidebar() {
     { name: 'Departments', path: '/departments', icon: Building2 },
     { name: 'Wards & Beds', path: '/wards', icon: Bed },
     { name: 'Pharmacy', path: '/pharmacy', icon: Pill },
-    { name: 'Lab Reports', path: '/labs', icon: Microscope },
+    { name: role === 'LAB_WORKER' ? 'Laboratory Worklist' : 'Lab Reports', path: '/labs', icon: Microscope },
     { name: 'Surgeries', path: '/surgeries', icon: Scissors },
     { name: 'Blood Bank', path: '/blood-bank', icon: Droplets },
     { name: 'Billing', path: '/billing', icon: Receipt },
@@ -69,8 +80,8 @@ export default function Sidebar() {
   const patientItems = [
     { name: 'My Appointments', path: '/patient/appointments', icon: CalendarDays },
     { name: 'My Prescriptions', path: '/patient/prescriptions', icon: Pill },
-    { name: 'My Lab Results', path: '/labs', icon: Microscope },
-    { name: 'My Bills', path: '/patient/bills', icon: Receipt },
+    { name: 'My Lab Reports', path: '/labs', icon: Microscope },
+    { name: 'My Bills & Invoices', path: '/patient/bills', icon: Receipt },
     { name: 'My Health Records', path: '/patient/records', icon: UserCircle },
   ];
 
@@ -80,20 +91,6 @@ export default function Sidebar() {
     : role === 'PATIENT'
     ? patientItems
     : allModuleItems.filter((item) => allowedPaths.includes(item.path));
-
-  const roleLabel = isSuperAdmin
-    ? 'Super Admin • System Control'
-    : role === 'PHARMACIST'
-    ? 'Pharmacist'
-    : role === 'RECEPTIONIST'
-    ? 'Receptionist'
-    : role === 'LAB_WORKER'
-    ? 'Lab Worker'
-    : role === 'DOCTOR'
-    ? 'Doctor'
-    : role === 'PATIENT'
-    ? 'Patient'
-    : role || currentUser?.role || 'User';
 
   return (
     <aside className="w-64 min-h-screen bg-gradient-to-b from-[#111912] via-[#142016] to-[#0d140e] text-gray-300 flex flex-col justify-between p-4 rounded-3xl m-3 shadow-2xl border border-[#203023]">
@@ -173,8 +170,8 @@ export default function Sidebar() {
       </div>
 
       {/* Bottom Footer Section */}
-      <div className="pt-4 border-t border-white/10 space-y-3">
-        {allowedPaths.includes('/settings') && (
+      {allowedPaths.includes('/settings') && (
+        <div className="pt-4 border-t border-white/10">
           <NavLink
             to="/settings"
             className="flex items-center space-x-3 px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
@@ -182,34 +179,8 @@ export default function Sidebar() {
             <Settings className="w-4 h-4" />
             <span>Settings</span>
           </NavLink>
-        )}
-
-        {/* Current signed-in user */}
-        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-white/5 border border-white/5 mt-2">
-          <div className="flex items-center space-x-3">
-            <img
-              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face"
-              alt={currentUser?.name || currentUser?.username || 'Current user'}
-              className="w-9 h-9 rounded-xl object-cover ring-2 ring-lime-400/40"
-            />
-            <div>
-              <p className="text-sm font-semibold text-white leading-none">
-                {currentUser?.name || currentUser?.username || 'Administrator'}
-              </p>
-              <p className="text-xs text-lime-400 font-medium mt-1">
-                {roleLabel}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            title="Log Out"
-            className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
-      </div>
+      )}
     </aside>
   );
 }

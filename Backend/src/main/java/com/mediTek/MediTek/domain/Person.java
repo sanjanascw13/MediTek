@@ -43,4 +43,7 @@ public abstract class Person {
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @Column(name = "profile_image", columnDefinition = "LONGTEXT")
+    private String profileImage;
 }

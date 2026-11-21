@@ -667,6 +667,7 @@ export const api = {
       username: response.username,
       name: response.name || response.username,
       role: response.role,
+      designation: response.designation,
       personId: response.personId,
       mustChangePassword: response.passwordChangeRequired,
     };
@@ -1049,7 +1050,54 @@ export const api = {
     if (user) {
       const updatedUser = { ...user, mustChangePassword: false };
       localStorage.setItem('meditek_user', JSON.stringify(updatedUser));
+      window.dispatchEvent(new Event('meditek_user_updated'));
     }
+  },
+
+  getProfile: async () => {
+    if (USE_MOCKS) {
+      const user = api.getCurrentUser() || {};
+      return {
+        username: user.username,
+        name: user.name || user.username,
+        email: user.email || `${user.username}@meditek.local`,
+        phoneNumber: user.phoneNumber || '',
+        role: user.role || 'USER',
+        designation: user.designation || '',
+        profileImage: user.profileImage || null,
+      };
+    }
+    const response = await apiClient.get('/profile');
+    return response.data;
+  },
+
+  updateProfile: async (data) => {
+    if (USE_MOCKS) {
+      const user = api.getCurrentUser() || {};
+      const updatedUser = {
+        ...user,
+        name: data.name !== undefined ? data.name : user.name,
+        email: data.email !== undefined ? data.email : user.email,
+        phoneNumber: data.phoneNumber !== undefined ? data.phoneNumber : user.phoneNumber,
+        profileImage: data.profileImage !== undefined ? data.profileImage : user.profileImage,
+      };
+      localStorage.setItem('meditek_user', JSON.stringify(updatedUser));
+      window.dispatchEvent(new Event('meditek_user_updated'));
+      return updatedUser;
+    }
+    const response = await apiClient.put('/profile', data);
+    const profile = response.data;
+    const user = api.getCurrentUser() || {};
+    const updatedUser = {
+      ...user,
+      name: profile.name,
+      email: profile.email,
+      phoneNumber: profile.phoneNumber,
+      profileImage: profile.profileImage,
+    };
+    localStorage.setItem('meditek_user', JSON.stringify(updatedUser));
+    window.dispatchEvent(new Event('meditek_user_updated'));
+    return profile;
   },
 
   // Dashboard endpoints
@@ -1095,7 +1143,8 @@ export const api = {
       apiClient.get('/prescriptions'),
       api.getBills(),
       api.getMedicalRecords(),
-    ]).then(([patient, appointments, prescriptions, bills, records]) => ({
+      apiClient.get('/lab-tests').then((res) => res.data).catch(() => []),
+    ]).then(([patient, appointments, prescriptions, bills, records, labs]) => ({
       patient: patient.data,
       appointments: appointments.data,
       prescriptions: prescriptions.data.map((prescription) => ({
@@ -1107,6 +1156,7 @@ export const api = {
       })),
       bills,
       records,
+      labs: Array.isArray(labs) ? labs : [],
     }));
   },
 
@@ -1263,7 +1313,7 @@ export const api = {
 
   dischargeAdmission: (admissionId) => requestOrMock(
     () => {
-      requireDemoRole(['ADMIN', 'STAFF']);
+      requireDemoRole(['ADMIN', 'STAFF', 'DOCTOR']);
       const admission = mockStore.admissions.find(
         (item) => item.admissionId === admissionId && item.status === 'ACTIVE'
       );
