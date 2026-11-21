@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Bed,
   Receipt,
@@ -22,6 +23,7 @@ import {
   CalendarDays,
   ShieldCheck,
   Send,
+  Pill,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { EmptyState, ErrorState, LoadingState } from '../ApiState';
@@ -435,6 +437,13 @@ export default function ReceptionistDashboard() {
             <Receipt className="h-4 w-4" />
             Generate Invoice
           </button>
+          <Link
+            to="/pharmacy"
+            className="flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-gray-800"
+          >
+            <Pill className="h-4 w-4 text-lime-400" />
+            Pharmacy & Inventory
+          </Link>
         </div>
       </div>
 

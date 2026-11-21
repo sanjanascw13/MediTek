@@ -1643,6 +1643,19 @@ export const api = {
     },
     () => apiClient.post('/medicines', payload).then((res) => mapMedicineFromApi(res.data))
   ),
+  updateMedicineStock: (medicineId, quantity) => requestOrMock(
+    () => {
+      const med = mockStore.medicines.find(m => m.medicineId === medicineId);
+      if (med) {
+        med.stock = Math.max(0, (med.stock || 0) + Number(quantity));
+        med.quantity = med.stock;
+      }
+      return med;
+    },
+    () => apiClient.patch(`/medicines/${encodeURIComponent(medicineId)}/stock`, null, {
+      params: { quantity }
+    }).then((res) => mapMedicineFromApi(res.data))
+  ),
   getMedicines: (search = '') => requestOrMock(
     () => [...mockStore.medicines].filter((medicine) => (
       `${medicine.name} ${medicine.category}`.toLowerCase().includes(search.trim().toLowerCase())

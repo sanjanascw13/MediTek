@@ -28,8 +28,14 @@ public class MedicineController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STAFF')")
     public ResponseEntity<MedicineDto> createMedicine(@Valid @RequestBody MedicineCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(pharmacyService.createMedicine(request));
+    }
+
+    @PatchMapping("/{id}/stock")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STAFF')")
+    public ResponseEntity<MedicineDto> updateStock(@PathVariable String id, @RequestParam int quantity) {
+        return ResponseEntity.ok(pharmacyService.updateStock(id, quantity));
     }
 }

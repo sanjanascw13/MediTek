@@ -12,6 +12,7 @@ import java.util.List;
 public interface PharmacyService {
     List<MedicineDto> getMedicines(String search);
     MedicineDto createMedicine(MedicineCreateRequest request);
+    MedicineDto updateStock(String medicineId, int quantityChange);
     List<PrescriptionDto> getPrescriptions();
     PrescriptionDto createPrescription(PrescriptionCreateRequest request);
     List<DispensationDto> getDispensations();

@@ -85,6 +85,21 @@ public class PharmacyServiceImpl implements PharmacyService {
     }
 
     @Override
+    @Transactional
+    public MedicineDto updateStock(String medicineId, int quantityChange) {
+        Role.RoleName role = currentUserService.role();
+        if (role != Role.RoleName.STAFF && role != Role.RoleName.SUPER_ADMIN && role != Role.RoleName.ADMIN) {
+            throw new AccessDeniedException("Only staff and administrators may update medicine stock.");
+        }
+        Medicine medicine = medicineRepository.findByIdForUpdate(medicineId)
+                .orElseThrow(() -> new ResourceNotFoundException("Medicine not found: " + medicineId));
+        int updated = Math.max(0, medicine.getQuantity() + quantityChange);
+        medicine.setQuantity(updated);
+        log.info("Updated medicine {} stock by {} -> new stock: {}", medicineId, quantityChange, updated);
+        return mapMedicine(medicineRepository.save(medicine));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<PrescriptionDto> getPrescriptions() {
         Role.RoleName role = currentUserService.role();

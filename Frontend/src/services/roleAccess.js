@@ -11,7 +11,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   DOCTOR: { patients: true, clinical: true, pharmacy: true, wards: false, billing: false, labs: true },
   PHARMACIST: { patients: false, clinical: false, pharmacy: true, wards: false, billing: false, labs: false },
   LAB_WORKER: { patients: false, clinical: false, pharmacy: false, wards: false, billing: false, labs: true },
-  RECEPTIONIST: { patients: true, clinical: true, pharmacy: false, wards: true, billing: true, labs: false },
+  RECEPTIONIST: { patients: true, clinical: true, pharmacy: true, wards: true, billing: true, labs: false },
   PATIENT: { patients: false, clinical: false, pharmacy: false, wards: false, billing: false, labs: true },
 };
 

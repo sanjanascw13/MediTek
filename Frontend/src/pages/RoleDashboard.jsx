@@ -228,7 +228,7 @@ function PharmacistDashboard() {
             className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#a3e635] hover:bg-lime-400 text-gray-950 font-bold text-sm transition-all shadow-md active:scale-95"
           >
             <Pill className="w-4 h-4" />
-            <span>Formulary & Stock</span>
+            <span>Manage Inventory</span>
           </Link>
         </div>
       </div>

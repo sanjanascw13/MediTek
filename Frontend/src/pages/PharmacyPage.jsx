@@ -69,10 +69,15 @@ export default function PharmacyPage() {
   const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
   const [prescriptionForm, setPrescriptionForm] = useState(emptyPrescriptionForm());
 
+  // Restock modal state
+  const [restockMedicine, setRestockMedicine] = useState(null);
+  const [restockQty, setRestockQty] = useState('50');
+  const [restocking, setRestocking] = useState(false);
+
   const role = api.getCurrentRole();
   const canPrescribe = ['DOCTOR', 'SUPER_ADMIN', 'ADMIN'].includes(role);
   const canDispense = ['STAFF', 'SUPER_ADMIN', 'ADMIN', 'PHARMACIST'].includes(role);
-  const canAddMedicine = ['SUPER_ADMIN', 'ADMIN'].includes(role);
+  const canAddMedicine = ['SUPER_ADMIN', 'ADMIN', 'PHARMACIST', 'RECEPTIONIST', 'STAFF'].includes(role);
 
   const loadData = useCallback(async (query = '') => {
     setLoading(true);
@@ -204,6 +209,29 @@ export default function PharmacyPage() {
       setError(api.getErrorMessage(err, 'Unable to add medicine item.'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRestock = async (e) => {
+    e.preventDefault();
+    if (!restockMedicine) return;
+    const qty = parseInt(restockQty, 10);
+    if (isNaN(qty) || qty <= 0) {
+      setError('Please enter a valid positive quantity.');
+      return;
+    }
+    setRestocking(true);
+    setError('');
+    try {
+      const updated = await api.updateMedicineStock(restockMedicine.medicineId, qty);
+      setSuccess(`Successfully added ${qty} unit(s) to ${updated.name || restockMedicine.name} stock (Total: ${updated.stock || (restockMedicine.stock + qty)} units).`);
+      setRestockMedicine(null);
+      setRestockQty('50');
+      await loadData(search);
+    } catch (err) {
+      setError(api.getErrorMessage(err, 'Failed to update stock quantity.'));
+    } finally {
+      setRestocking(false);
     }
   };
 
@@ -413,20 +441,36 @@ export default function PharmacyPage() {
                       {med.stock > 0 ? 'Available' : 'Out of Stock'}
                     </span>
 
-                    {canDispense && (
-                      <button
-                        type="button"
-                        disabled={med.stock < 1 || (!api.isMockMode() && !eligible)}
-                        onClick={() => {
-                          setSelectedMedicine(med);
-                          setSelectedPrescriptionItem('');
-                          setError('');
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-[#a3e635] text-[#142008] font-bold text-xs hover:bg-[#8ddb16] transition-all disabled:opacity-40"
-                      >
-                        Dispense
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {canAddMedicine && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRestockMedicine(med);
+                            setRestockQty('50');
+                            setError('');
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-700 font-bold text-xs hover:bg-gray-100 transition-all"
+                          title="Restock medicine inventory"
+                        >
+                          + Stock
+                        </button>
+                      )}
+                      {canDispense && (
+                        <button
+                          type="button"
+                          disabled={med.stock < 1 || (!api.isMockMode() && !eligible)}
+                          onClick={() => {
+                            setSelectedMedicine(med);
+                            setSelectedPrescriptionItem('');
+                            setError('');
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-[#a3e635] text-[#142008] font-bold text-xs hover:bg-[#8ddb16] transition-all disabled:opacity-40"
+                        >
+                          Dispense
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -988,6 +1032,72 @@ export default function PharmacyPage() {
                   className="rounded-2xl bg-[#a3e635] px-5 py-2.5 text-xs font-bold text-[#142008] hover:bg-lime-400 disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : 'Add Medicine'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Restock Medicine Inventory Modal */}
+      {restockMedicine && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Restock Medicine</h3>
+                <p className="text-xs text-gray-500">Add physical inventory stock to formulary</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRestockMedicine(null)}
+                className="p-1 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100 space-y-1">
+              <p className="font-bold text-gray-900">{restockMedicine.name}</p>
+              <p className="text-xs text-gray-500">
+                Current stock: <strong className="text-gray-900">{restockMedicine.stock} units</strong> · {formatLKR(restockMedicine.price)} / unit
+              </p>
+            </div>
+
+            <form onSubmit={handleRestock} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Additional Units to Add *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="1"
+                  value={restockQty}
+                  onChange={(e) => setRestockQty(e.target.value)}
+                  placeholder="e.g. 50"
+                  className="w-full rounded-2xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-lime-400 focus:outline-none"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  New stock total will be {Number(restockMedicine.stock) + (parseInt(restockQty, 10) || 0)} units.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRestockMedicine(null)}
+                  className="rounded-2xl bg-gray-100 px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={restocking}
+                  className="rounded-2xl bg-[#a3e635] px-5 py-2.5 text-xs font-bold text-[#142008] hover:bg-lime-400 disabled:opacity-50"
+                >
+                  {restocking ? 'Updating...' : 'Confirm Restock'}
                 </button>
               </div>
             </form>
