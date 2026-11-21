@@ -161,7 +161,17 @@ export default function WardsBedsPage() {
     setBedLoading(true);
     api.getAvailableBeds(selectedWardId)
       .then((bedsData) => {
-        if (!cancelled) setAvailableBeds(bedsData);
+        if (!cancelled) {
+          const list = Array.isArray(bedsData) ? bedsData : [];
+          setAvailableBeds(list);
+          if (list.length > 0) {
+            setForm((current) => ({
+              ...current,
+              bedId: current.bedId && list.some((b) => b.bedId === current.bedId) ? current.bedId : list[0].bedId,
+              targetBedId: current.targetBedId && list.some((b) => b.bedId === current.targetBedId) ? current.targetBedId : list[0].bedId,
+            }));
+          }
+        }
       })
       .catch((requestError) => {
         if (!cancelled) setBedError(api.getErrorMessage(requestError, 'Unable to load available beds.'));

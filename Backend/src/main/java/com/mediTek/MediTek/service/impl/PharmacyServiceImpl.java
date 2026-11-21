@@ -152,8 +152,8 @@ public class PharmacyServiceImpl implements PharmacyService {
             item.setFrequency(itemReq.frequency());
             item.setDurationDays(itemReq.durationDays());
 
-            prescriptionItemRepository.save(item);
-            saved.getItems().add(item);
+            PrescriptionItem savedItem = prescriptionItemRepository.save(item);
+            saved.getItems().add(savedItem);
         }
 
         return mapPrescription(saved);

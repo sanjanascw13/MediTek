@@ -9,11 +9,13 @@ This document provides system access credentials for hospital staff and administ
 | Role / Designation | Staff Member Name | Department | Username | Password | Access Portal URL |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Super Admin** | System Administrator | Administration | `meditekadmin` | `Admin@Meditek2026!` | `http://localhost:5173/login` |
+| **Doctor** | Dr. Gregory House | Diagnostics & Nephrology (`DOC-000001`) | `meditek_doctor` | `Admin@Meditek2026!` | `http://localhost:5173/login` |
 | **Pharmacist** | David Miller | Central Pharmacy (`DEP-000005`) | `meditek_pharma` | `Pharma@Meditek2026!` | `http://localhost:5173/login` |
-| **Receptionist** | Emma Watson | Outpatient Department (`DEP-000003`) | `meditek_reception` | `Reception@Meditek2026!` | `http://localhost:5173/login` |
+| **Receptionist** | Emma Watson | Outpatient Department (`DEP-000003`) | `meditek_reception` | `Admin@Meditek2026!` | `http://localhost:5173/login` |
 | **Laboratory Technician** | Robert Chen | Central Pathology Laboratory (`DEP-000004`) | `meditek_labtech` | `LabTech@Meditek2026!` | `http://localhost:5173/login` |
-| **Billing Officer** | Grace Hopper | Outpatient Department (`DEP-000003`) | `meditek_billing` | `Billing@Meditek2026!` | `http://localhost:5173/login` |
+| **Billing Officer** | Grace Hopper | Outpatient Department (`DEP-000003`) | `meditek_reception` | `Admin@Meditek2026!` | `http://localhost:5173/login` |
 | **Nurse** | Clara Barton | Intensive Care Unit (`DEP-000002`) | `meditek_nurse` | `Nurse@Meditek2026!` | `http://localhost:5173/login` |
+| **Patient** | Alice TestPatient | Patient Portal (`PAT-000001` / `PER-000001`) | `alicetestpatient` | `Admin@Meditek2026!` | `http://localhost:5173/login` |
 
 ---
 
@@ -28,40 +30,45 @@ This document provides system access credentials for hospital staff and administ
   - Review all hospital appointments, admissions, surgeries, lab tests, and billing items.
   - Access system settings and audit configurations.
 
-### 2. Pharmacist (`meditek_pharma`)
+### 2. Doctor (`meditek_doctor`)
+- **Authority:** Clinical consultations, e-prescribing, inpatient rounds, and patient discharge.
+- **Capabilities:**
+  - Manage today's consultation schedule and patient queue.
+  - Record diagnoses, clinical notes, and vital checks.
+  - Write e-prescriptions directly linked to the central pharmacy.
+  - Order diagnostic laboratory tests and review test findings.
+  - Inpatient rounds management and **discharge active inpatients**.
+
+### 3. Pharmacist (`meditek_pharma`)
 - **Authority:** Staff-level pharmacy and medication management.
 - **Capabilities:**
   - View doctor prescriptions.
   - Dispense medications against active prescriptions with automated stock decrement.
   - Inspect formulary medicines, stock levels, and expiry alerts.
 
-### 3. Receptionist (`meditek_reception`)
-- **Authority:** Front-desk patient admission and appointment desk.
-- **Capabilities:**
-  - Register new patients into the MediTek electronic health registry.
-  - Schedule, view, and organize patient consultations and appointments.
-  - Process patient admissions and bed transfers across wards.
-
 ### 4. Laboratory Technician (`meditek_labtech`)
-- **Authority:** Diagnostic lab test processing and reporting.
+- **Authority:** Diagnostic laboratory processing, specimen analysis, and report publication.
 - **Capabilities:**
-  - Review incoming lab test requests and pending doctor orders.
-  - Record specimen details, input lab test findings, and publish finalized lab reports.
-  - Track order completion status.
+  - Review incoming doctor lab orders and STAT/urgent diagnostic requests.
+  - Record specimen analysis metrics, quantitative findings, and technician remarks.
+  - Verify and publish finalized lab reports (synchronizing with doctors and patient health portals).
 
-### 5. Billing Officer (`meditek_billing`)
-- **Authority:** Patient billing, invoicing, and revenue reconciliation.
+### 5. Receptionist (`meditek_reception`)
+- **Authority:** Front-desk patient registration, admissions, and billing cashier.
 - **Capabilities:**
-  - Generate consolidated inpatient and outpatient bills.
-  - Add billing line items for treatments, medications, procedures, and room fees.
-  - Record payments (Cash, Card, Insurance) and issue receipts.
+  - Register new patients into the electronic health record.
+  - Schedule consultations and organize doctor queues.
+  - Check ward bed availability, assign beds, and admit inpatients.
+  - Collect payments and issue billing invoices/receipts.
 
-### 6. Nurse (`meditek_nurse`)
-- **Authority:** Inpatient care, bedside monitoring, and clinical workflow.
+### 6. Patient (`alicetestpatient`)
+- **Authority:** Self-service health access for registered patients.
 - **Capabilities:**
-  - Monitor ward occupancies and bed allocation.
-  - Record vitals and update inpatient nursing charts.
-  - Track scheduled surgeries and support doctor consultations.
+  - View upcoming appointments and schedule new doctor consultations.
+  - Review active e-prescriptions and medication instructions issued by attending physicians.
+  - Access verified diagnostic laboratory reports and test results from the central lab.
+  - Review hospital billing invoices in **LKR** and pay balances online.
+  - Access and print official receipts and medical record summaries.
 
 ---
 

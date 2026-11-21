@@ -16,8 +16,75 @@ import {
   Calendar,
   MapPin,
   HeartPulse,
+  Pill,
+  Microscope,
+  Building2,
+  Sparkles,
 } from 'lucide-react';
 import { api } from '../services/api';
+
+const DEMO_ROLES = [
+  {
+    id: 'super_admin',
+    label: 'Super Admin',
+    name: 'System Administrator',
+    username: 'meditekadmin',
+    password: 'Admin@Meditek2026!',
+    tag: 'Hospital Control & RBAC',
+    icon: ShieldCheck,
+    color: 'from-amber-500/20 to-amber-600/10 text-amber-300 border-amber-500/30',
+  },
+  {
+    id: 'doctor',
+    label: 'Doctor',
+    name: 'Dr. Gregory House',
+    username: 'meditek_doctor',
+    password: 'Admin@Meditek2026!',
+    tag: 'Clinical Care & Discharge',
+    icon: Stethoscope,
+    color: 'from-blue-500/20 to-blue-600/10 text-blue-300 border-blue-500/30',
+  },
+  {
+    id: 'pharmacist',
+    label: 'Pharmacist',
+    name: 'David Miller',
+    username: 'meditek_pharma',
+    password: 'Pharma@Meditek2026!',
+    tag: 'Formulary & Dispensing',
+    icon: Pill,
+    color: 'from-cyan-500/20 to-cyan-600/10 text-cyan-300 border-cyan-500/30',
+  },
+  {
+    id: 'lab_tech',
+    label: 'Lab Technician',
+    name: 'Robert Chen',
+    username: 'meditek_labtech',
+    password: 'LabTech@Meditek2026!',
+    tag: 'Specimens & Pathology',
+    icon: Microscope,
+    color: 'from-purple-500/20 to-purple-600/10 text-purple-300 border-purple-500/30',
+  },
+  {
+    id: 'receptionist',
+    label: 'Receptionist',
+    name: 'Emma Watson',
+    username: 'meditek_reception',
+    password: 'Admin@Meditek2026!',
+    tag: 'Bed Radar & LKR Cashier',
+    icon: Building2,
+    color: 'from-emerald-500/20 to-emerald-600/10 text-emerald-300 border-emerald-500/30',
+  },
+  {
+    id: 'patient',
+    label: 'Patient',
+    name: 'Alice TestPatient',
+    username: 'alicetestpatient',
+    password: 'Admin@Meditek2026!',
+    tag: 'Health Portal & Payments',
+    icon: HeartPulse,
+    color: 'from-lime-500/20 to-lime-600/10 text-lime-300 border-lime-500/30',
+  },
+];
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -117,14 +184,17 @@ export default function LoginPage() {
     }
   };
 
-  const quickLogin = async (user) => {
+  const handleQuickRoleLogin = async (demoRole) => {
+    setUsername(demoRole.username);
+    setPassword(demoRole.password);
     setLoading(true);
     setError('');
+    setSuccessMsg(`Signing in as ${demoRole.label} (${demoRole.name})...`);
     try {
-      await api.login({ username: user, password: '' });
+      await api.login({ username: demoRole.username, password: demoRole.password });
       finishLogin();
     } catch (err) {
-      setError(api.getErrorMessage(err, 'Demo sign-in failed.'));
+      setError(api.getErrorMessage(err, `Unable to sign in as ${demoRole.label}.`));
     } finally {
       setLoading(false);
     }
@@ -476,36 +546,61 @@ export default function LoginPage() {
           </form>
         )}
 
-        {api.isMockMode() && (
+        {mode === 'login' && (
           <div className="mt-8 pt-6 border-t border-white/10">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-center mb-3">
-              Development Demo Access (Mock Mode)
-            </p>
-            <p className="mb-3 text-center text-xs text-gray-500">Choose a demo role to continue without credentials.</p>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { id: 'admin', label: 'Super Admin', detail: 'Hospital-wide management', icon: ShieldCheck },
-                { id: 'doctor', label: 'Doctor', detail: 'Clinical & appointments', icon: Stethoscope },
-                { id: 'staff', label: 'Staff', detail: 'Operational worklists', icon: ClipboardList },
-                { id: 'patient', label: 'Patient', detail: 'Personal health portal', icon: UserRound },
-              ].map(({ id, label, detail, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => quickLogin(id)}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition hover:border-lime-400/50 hover:bg-white/10 disabled:opacity-50"
-                >
-                  <span className="rounded-xl bg-lime-400/10 p-2 text-lime-300"><Icon className="h-5 w-5" /></span>
-                  <span>
-                    <span className="block text-sm font-bold text-white">{label}</span>
-                    <span className="mt-0.5 block text-[10px] text-gray-400">{detail}</span>
-                  </span>
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-lime-400" />
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-300">
+                  Quick Demo Access • 6 Hospital Roles
+                </span>
+              </div>
+              <span className="text-[10px] font-medium text-gray-500 hidden sm:inline">
+                Click any role to sign in instantly
+              </span>
             </div>
-            <p className="mt-3 text-center text-[10px] text-amber-300/80">
-              Demo-only navigation; these roles do not represent real security permissions.
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {DEMO_ROLES.map((r) => {
+                const Icon = r.icon;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleQuickRoleLogin(r)}
+                    className="group relative flex flex-col justify-between p-3 rounded-2xl border border-white/10 bg-white/[0.03] text-left transition-all hover:bg-white/[0.08] hover:border-lime-400/50 hover:shadow-lg disabled:opacity-50"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${r.color} flex items-center justify-center border shadow-sm`}>
+                        <Icon className="w-4 h-4 stroke-[2.2]" />
+                      </div>
+                      <span className="text-[10px] font-mono text-gray-400 group-hover:text-lime-300 transition-colors">
+                        {r.username}
+                      </span>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-white group-hover:text-lime-400 transition-colors">
+                          {r.label}
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-gray-600 group-hover:text-lime-400 group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                      <p className="text-[11px] text-gray-300 font-medium truncate mt-0.5">
+                        {r.name}
+                      </p>
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                        {r.tag}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="mt-3.5 text-center text-[11px] text-gray-500">
+              Live credentials verified from <code className="text-lime-400 font-mono text-[10px] bg-black/40 px-1.5 py-0.5 rounded">access.md</code>
             </p>
           </div>
         )}

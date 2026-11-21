@@ -36,7 +36,7 @@ public class AdmissionController {
     }
 
     @PostMapping("/{id}/discharge")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'STAFF', 'DOCTOR')")
     public ResponseEntity<AdmissionDto> discharge(@PathVariable String id) {
         AdmissionDto discharged = admissionService.dischargePatient(id);
         return ResponseEntity.ok(discharged);
