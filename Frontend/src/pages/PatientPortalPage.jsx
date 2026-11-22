@@ -884,7 +884,14 @@ export default function PatientPortalPage({ section: defaultSection = 'overview'
 
             <div className="rounded-2xl border border-gray-200 bg-gray-50/50 p-6 space-y-4 text-xs">
               <div className="text-center space-y-1 border-b border-gray-200 pb-3">
-                <h4 className="text-base font-black text-gray-900">MediTek General Hospital</h4>
+                <div className="flex justify-center mb-1">
+                  <img
+                    src="/meditek-logo-tight.png"
+                    alt="MediTeck Logo"
+                    className="h-8 w-auto object-contain"
+                  />
+                </div>
+                <h4 className="text-base font-black text-gray-900">MediTeck General Hospital</h4>
                 <p className="text-[11px] text-gray-500">Electronic Cashier & Patient Billing Department</p>
                 <p className="text-[10px] font-mono text-gray-400">TAX INVOICE / RECEIPT: {viewingReceipt.billId}</p>
               </div>
@@ -956,7 +963,14 @@ export default function PatientPortalPage({ section: defaultSection = 'overview'
 
             <div className="rounded-2xl border border-gray-200 bg-gray-50/50 p-6 space-y-4 text-xs">
               <div className="text-center space-y-1 border-b border-gray-200 pb-3">
-                <h4 className="text-base font-black text-gray-900">MediTek Central Pathology Laboratory</h4>
+                <div className="flex justify-center mb-1">
+                  <img
+                    src="/meditek-logo-tight.png"
+                    alt="MediTeck Logo"
+                    className="h-8 w-auto object-contain"
+                  />
+                </div>
+                <h4 className="text-base font-black text-gray-900">MediTeck Central Pathology Laboratory</h4>
                 <p className="text-[11px] text-gray-500">Diagnostic Division • Verified Patient Laboratory Findings</p>
                 <p className="text-[10px] font-mono text-purple-800 font-bold">
                   TEST REF: {viewingLabReport.testId} • REPORT: {viewingLabReport.reportId || 'VERIFIED'}

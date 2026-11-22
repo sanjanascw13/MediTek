@@ -160,13 +160,22 @@ export default function HeroBanner({ stats, showDemoTrends = true }) {
 
       <div className="relative z-10">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white">
-              MediTek Dashboard
-            </h2>
-            <p className="text-gray-400 text-sm mt-1">
-              A modern dashboard for efficient hospital and clinic management.
-            </p>
+          <div className="flex items-center space-x-4">
+            <div className="bg-white rounded-2xl p-2 shadow-md border border-white/20 hidden sm:flex items-center justify-center">
+              <img
+                src="/meditek-icon.png"
+                alt="MediTeck Logo"
+                className="w-10 h-10 object-contain"
+              />
+            </div>
+            <div>
+              <h2 className="text-3xl font-extrabold tracking-tight text-white">
+                MediTeck Dashboard
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">
+                A modern dashboard for efficient hospital and clinic management.
+              </p>
+            </div>
           </div>
           {role && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-lime-400 border border-lime-400/20">

@@ -1368,7 +1368,14 @@ export default function ReceptionistDashboard() {
             <div className="border border-gray-200 rounded-2xl p-6 bg-white space-y-4">
               {/* Header */}
               <div className="border-b border-gray-200 pb-4 text-center">
-                <h3 className="text-xl font-black text-gray-900 tracking-tight">MediTek Hospital</h3>
+                <div className="flex justify-center mb-2">
+                  <img
+                    src="/meditek-logo-tight.png"
+                    alt="MediTeck Logo"
+                    className="h-10 w-auto object-contain"
+                  />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 tracking-tight">MediTeck Hospital</h3>
                 <p className="text-xs text-gray-500">Outpatient Department & Admissions Desk</p>
                 <p className="text-[11px] text-gray-400">No. 45, Hospital Road, Colombo 07 • Tel: +94 11 234 5678</p>
                 <div className="mt-2 inline-block rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-black text-emerald-800">

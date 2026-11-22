@@ -208,15 +208,13 @@ export default function LoginPage() {
 
       <div className={`w-full ${mode === 'register' ? 'max-w-2xl' : 'max-w-xl'} bg-[#131b14] border border-[#223125] rounded-3xl p-8 shadow-2xl relative z-10 text-white transition-all`}>
         {/* Brand */}
-        <div className="flex items-center space-x-3 mb-6 justify-center">
-          <div className="w-12 h-12 rounded-2xl bg-lime-500/20 flex items-center justify-center border border-lime-400/30 shadow-[0_0_20px_rgba(163,230,53,0.3)]">
-            <Activity className="w-7 h-7 text-lime-400 stroke-[2.5]" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">MediTek</h1>
-            <p className="text-[11px] uppercase tracking-wider text-lime-400 font-bold">
-              Hospital Management
-            </p>
+        <div className="flex flex-col items-center justify-center mb-6">
+          <div className="bg-white rounded-2xl px-6 py-3 shadow-xl border border-white/20 inline-flex items-center justify-center">
+            <img
+              src="/meditek-logo-tight.png"
+              alt="MediTeck - Hospital Information Management System"
+              className="h-12 w-auto object-contain"
+            />
           </div>
         </div>
 

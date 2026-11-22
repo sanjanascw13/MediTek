@@ -96,18 +96,18 @@ export default function Sidebar() {
     <aside className="w-64 min-h-screen bg-gradient-to-b from-[#111912] via-[#142016] to-[#0d140e] text-gray-300 flex flex-col justify-between p-4 rounded-3xl m-3 shadow-2xl border border-[#203023]">
       <div>
         {/* Brand / Logo */}
-        <div className="flex items-center space-x-3 px-3 py-4 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-lime-500/20 flex items-center justify-center border border-lime-400/30 shadow-[0_0_15px_rgba(163,230,53,0.25)]">
-            <Activity className="w-6 h-6 text-lime-400 stroke-[2.5]" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-1">
-              MediTek
-            </h1>
-            <span className="text-[10px] uppercase tracking-wider text-lime-400 font-semibold">
-              Hospital System
-            </span>
-          </div>
+        <div className="px-2 py-2 mb-4">
+          <NavLink
+            to="/"
+            className="flex items-center justify-center bg-white rounded-2xl px-3 py-2.5 shadow-lg hover:shadow-lime-500/20 transition-all duration-200 group border border-white/10"
+            title="MediTeck Hospital Information Management System"
+          >
+            <img
+              src="/meditek-logo-tight.png"
+              alt="MediTeck - Hospital Information Management System"
+              className="h-9 w-auto max-w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+            />
+          </NavLink>
         </div>
 
         {/* Primary Navigation */}
