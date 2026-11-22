@@ -1,4 +1,19 @@
-ALTER TABLE persons ADD COLUMN IF NOT EXISTS profile_image LONGTEXT NULL AFTER is_active;
+SET @col_exists = (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'persons'
+      AND COLUMN_NAME = 'profile_image'
+);
+
+SET @stmt = IF(@col_exists = 0,
+    'ALTER TABLE persons ADD COLUMN profile_image LONGTEXT NULL AFTER is_active',
+    'SELECT 1'
+);
+
+PREPARE stmt FROM @stmt;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 INSERT INTO persons (person_id, name, date_of_birth, gender, phone_number, email, is_active)
 VALUES ('PER-000000', 'System Administrator', '1985-01-01', 'OTHER', '+94 11 000 0000', 'admin@meditek.local', 1)

@@ -53,8 +53,21 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, Object>> handleDataConflict(HttpServletRequest request) {
-        return error(HttpStatus.CONFLICT, "The request conflicts with existing data.", request);
+    public ResponseEntity<Map<String, Object>> handleDataConflict(DataIntegrityViolationException ex,
+                                                                   HttpServletRequest request) {
+        String message = "The request conflicts with existing data.";
+        String exMsg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
+        Throwable root = ex.getRootCause();
+        String rootMsg = root != null && root.getMessage() != null ? root.getMessage().toLowerCase() : "";
+
+        if (exMsg.contains("uq_person_email") || rootMsg.contains("uq_person_email")) {
+            message = "The email address is already registered.";
+        } else if (exMsg.contains("uq_user_account_username") || rootMsg.contains("uq_user_account_username")) {
+            message = "The username is already taken.";
+        } else if (exMsg.contains("duplicate entry") || rootMsg.contains("duplicate entry")) {
+            message = "A record with this identifier or unique value already exists.";
+        }
+        return error(HttpStatus.CONFLICT, message, request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
